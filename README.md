@@ -6,7 +6,19 @@ A comprehensive Haskell client library for [Tailscale](https://tailscale.com/). 
 
 - **Control Plane API** - Manage devices, DNS, ACLs, auth keys, and routes
 - **LocalAPI** - Communicate with the local tailscaled daemon
-- **TSNet** - Embed Tailscale directly in your application (like Caddy does)
+- **Pure Haskell Embedded Tailscale** - Run as a Tailscale node with no Go dependencies
+- **TSNet (FFI)** - Embed Tailscale via Go FFI (alternative approach)
+
+### Pure Haskell Implementation
+
+This library includes a complete pure Haskell implementation of:
+
+- **WireGuard Protocol** - Noise_IK handshake, ChaCha20-Poly1305 encryption, Curve25519 key exchange
+- **DERP Relay Protocol** - NAT traversal via Tailscale's relay servers
+- **Control Plane Protocol** - Node registration, network map distribution
+- **Userspace Networking** - IP packet parsing and handling
+
+No Go compiler or FFI required for the embedded functionality!
 
 ## Installation
 
@@ -98,9 +110,85 @@ main = do
           -- ... configure WarpTLS with these files
 ```
 
-### TSNet (Embedded Tailscale)
+### Pure Haskell Embedded Tailscale (Recommended)
 
-Run Tailscale embedded in your application - your app appears as a node on the tailnet:
+Run Tailscale embedded in your application with no Go dependencies:
+
+```haskell
+import Tailscale.Embedded
+
+main :: IO ()
+main = do
+  -- Create an embedded Tailscale instance
+  ts <- newTailscale defaultConfig
+    { tsHostname = "my-haskell-app"
+    , tsAuthKey = Just "tskey-auth-..."  -- For headless operation
+    }
+
+  -- Start and connect to the tailnet
+  result <- start ts
+  case result of
+    Left (TailscaleAuthRequired authURL) -> do
+      putStrLn $ "Please authenticate at: " <> show authURL
+    Left err -> error $ show err
+    Right () -> pure ()
+
+  -- Get our Tailscale IPs
+  (ipv4, ipv6) <- tailscaleIPs ts
+  putStrLn $ "IPv4: " <> show ipv4
+  putStrLn $ "IPv6: " <> show ipv6
+
+  -- Listen for connections
+  listener <- listen ts "tcp" 8080
+  case listener of
+    Left err -> error $ show err
+    Right ln -> do
+      putStrLn "Listening on Tailscale network..."
+      forever $ do
+        conn <- accept ln
+        -- Handle connection...
+        close conn
+
+  stop ts
+```
+
+#### Dialing Other Nodes
+
+```haskell
+main :: IO ()
+main = do
+  ts <- newTailscale defaultConfig
+  _ <- start ts
+
+  -- Connect to another Tailscale node
+  result <- dial ts "tcp" "other-host:22"
+  case result of
+    Left err -> error $ show err
+    Right conn -> do
+      _ <- send conn "Hello!"
+      response <- recv conn 1024
+      print response
+      close conn
+```
+
+#### Using withTailscale
+
+```haskell
+main :: IO ()
+main = do
+  result <- withTailscale defaultConfig $ \ts -> do
+    (ipv4, _) <- tailscaleIPs ts
+    putStrLn $ "Connected with IP: " <> show ipv4
+    -- Your application logic here
+    pure ()
+  case result of
+    Left err -> error $ show err
+    Right () -> pure ()
+```
+
+### TSNet (FFI-based, requires Go)
+
+Alternative approach using Go FFI - your app appears as a node on the tailnet:
 
 ```haskell
 import Tailscale.TSNet
@@ -206,7 +294,26 @@ listener <- serverListenFunnel server "tcp" ":443" False
 | `getServeConfig` / `setServeConfig` | Manage Tailscale Serve |
 | `getNetworkLockStatus` | Get tailnet lock status |
 
-### TSNet
+### Embedded (Pure Haskell)
+
+| Function | Description |
+|----------|-------------|
+| `newTailscale` | Create a new Tailscale instance |
+| `start` | Start and connect to tailnet |
+| `stop` | Stop the instance |
+| `withTailscale` | Bracket for safe resource management |
+| `tailscaleIPs` | Get assigned IPs (IPv4, IPv6) |
+| `certDomains` | Get certificate domains |
+| `isConnected` | Check connection status |
+| `selfInfo` | Get info about this node |
+| `listen` | Listen for connections |
+| `listenTLS` | Listen with TLS |
+| `accept` | Accept a connection |
+| `dial` | Connect to a peer |
+| `send` / `recv` | Send/receive data |
+| `close` | Close a connection |
+
+### TSNet (Go FFI)
 
 | Function | Description |
 |----------|-------------|
@@ -221,15 +328,26 @@ listener <- serverListenFunnel server "tcp" ":443" False
 
 ## Error Handling
 
-All API functions return `Either TailscaleError a` or `Either TSNetError a`:
+All API functions return `Either SomeError a`:
 
 ```haskell
+-- Control Plane API errors
 data TailscaleError
   = ApiError ErrResponse    -- API returned an error response
   | HttpError Text          -- HTTP-level error
   | JsonError Text          -- JSON parsing error
   | NetworkError Text       -- Network connectivity error
 
+-- Embedded Tailscale errors (pure Haskell)
+data TailscaleError
+  = TailscaleNotStarted
+  | TailscaleStartError Text
+  | TailscaleConnectionError Text
+  | TailscaleListenError Text
+  | TailscaleDERPError Text
+  | TailscaleAuthRequired Text  -- Contains auth URL for interactive login
+
+-- TSNet errors (Go FFI)
 data TSNetError
   = TSNetStartError Text
   | TSNetListenError Text
@@ -251,7 +369,13 @@ data TSNetError
 - `network` - Socket operations
 - `directory` / `filepath` - File operations
 
-**TSNet library** (requires Go):
+**Embedded Tailscale** (pure Haskell, no FFI):
+- `crypton` - Cryptographic primitives (ChaCha20-Poly1305, Curve25519, BLAKE2s)
+- `memory` - ByteArray operations
+- `base64-bytestring` - Base64 encoding
+- `stm` - Software transactional memory for concurrency
+
+**TSNet library** (alternative, requires Go):
 - libtsnet.so (built from Go code in `go/`)
 
 ## License
