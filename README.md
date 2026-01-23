@@ -1,6 +1,12 @@
 # hs-tailscale
 
-A Haskell client library for the [Tailscale](https://tailscale.com/) API. This is a direct port of the official [Tailscale Go SDK](https://github.com/tailscale/tailscale/tree/main/client/tailscale).
+A comprehensive Haskell client library for [Tailscale](https://tailscale.com/). This is a direct port of the official [Tailscale Go SDK](https://github.com/tailscale/tailscale/tree/main/client/tailscale).
+
+## Features
+
+- **Control Plane API** - Manage devices, DNS, ACLs, auth keys, and routes
+- **LocalAPI** - Communicate with the local tailscaled daemon
+- **TSNet** - Embed Tailscale directly in your application (like Caddy does)
 
 ## Installation
 
@@ -12,6 +18,8 @@ build-depends:
 ```
 
 ## Quick Start
+
+### Control Plane API
 
 ```haskell
 import Tailscale
@@ -28,114 +36,192 @@ main = do
     Right devices -> mapM_ (print . deviceName) devices
 ```
 
-## Authentication
+### LocalAPI (tailscaled daemon)
 
-The Tailscale API uses API keys for authentication. You can create an API key in the Tailscale admin console at: https://login.tailscale.com/admin/settings/keys
-
-## API Coverage
-
-This library covers the following Tailscale API endpoints:
-
-### Devices
+The LocalAPI lets you interact with the running tailscaled daemon on the local machine:
 
 ```haskell
--- List all devices
-getDevices :: Client -> Maybe DeviceFieldsOpts -> IO (Either TailscaleError [Device])
+import Tailscale.LocalAPI
 
--- Get a specific device
-getDevice :: Client -> Text -> Maybe DeviceFieldsOpts -> IO (Either TailscaleError Device)
+main :: IO ()
+main = do
+  client <- newLocalClient
 
--- Delete a device
-deleteDevice :: Client -> Text -> IO (Either TailscaleError ())
+  -- Get current status
+  status <- getStatus client
+  case status of
+    Left err -> print err
+    Right s -> do
+      print $ statusBackendState s
+      print $ statusTailscaleIPs s
 
--- Authorize a device
-authorizeDevice :: Client -> Text -> IO (Either TailscaleError ())
+  -- Identify who is connecting (useful in servers)
+  whois <- whoIs client "100.64.1.2:54321"
+  case whois of
+    Left err -> print err
+    Right w -> print $ userProfileDisplayName (whoIsUserProfile w)
 
--- Set device tags
-setTags :: Client -> Text -> [Text] -> IO (Either TailscaleError ())
+  -- Get TLS certificates for HTTPS
+  cert <- getCertPair client "myhost.tail-scale.ts.net"
+  case cert of
+    Left err -> print err
+    Right (CertPair certPEM keyPEM) -> do
+      -- Use with Warp TLS or other server
+      putStrLn "Got certificate!"
 ```
 
-### DNS
+### Server Utilities
+
+Easy integration with Warp or other Haskell web servers:
 
 ```haskell
--- Get/set full DNS configuration
-getDNSConfig :: Client -> IO (Either TailscaleError DNSConfig)
-setDNSConfig :: Client -> DNSConfig -> IO (Either TailscaleError DNSConfig)
+import Tailscale.Server
+import Network.Wai.Handler.Warp
 
--- Manage nameservers
-getNameServers :: Client -> IO (Either TailscaleError [Text])
-setNameServers :: Client -> [Text] -> IO (Either TailscaleError DNSNameServersPostResponse)
+main :: IO ()
+main = do
+  -- Get configuration from Tailscale
+  config <- getTailscaleServerConfig
+  case config of
+    Left err -> error $ show err
+    Right cfg -> do
+      putStrLn $ "Tailscale IPs: " <> show (tsAddresses cfg)
+      putStrLn $ "HTTPS domain: " <> show (tsCertDomain cfg)
 
--- Manage MagicDNS
-getDNSPreferences :: Client -> IO (Either TailscaleError DNSPreferences)
-setDNSPreferences :: Client -> Bool -> IO (Either TailscaleError DNSPreferences)
-
--- Manage search paths
-getSearchPaths :: Client -> IO (Either TailscaleError [Text])
-setSearchPaths :: Client -> [Text] -> IO (Either TailscaleError [Text])
+      -- Get TLS config for HTTPS
+      tlsConfig <- getTailscaleTLSConfig cfg
+      case tlsConfig of
+        Left err -> error $ show err
+        Right tls -> do
+          -- Write certs to temp files for WarpTLS
+          writeTLSCredentials tls "/tmp/cert.pem" "/tmp/key.pem"
+          -- ... configure WarpTLS with these files
 ```
 
-### Authentication Keys
+### TSNet (Embedded Tailscale)
+
+Run Tailscale embedded in your application - your app appears as a node on the tailnet:
 
 ```haskell
--- List all keys
-getKeys :: Client -> IO (Either TailscaleError [Text])
+import Tailscale.TSNet
 
--- Get key details
-getKey :: Client -> Text -> IO (Either TailscaleError Key)
+main :: IO ()
+main = do
+  -- Create an embedded Tailscale server
+  server <- newServer defaultServerConfig
+    { serverHostname = Just "my-haskell-app"
+    , serverAuthKey = Just "tskey-auth-..."  -- Or Nothing for interactive
+    }
 
--- Create keys
-createKey :: Client -> KeyCapabilities -> IO (Either TailscaleError (Text, Key))
-createKeyWithExpiry :: Client -> KeyCapabilities -> NominalDiffTime -> IO (Either TailscaleError (Text, Key))
+  -- Start and wait until connected
+  result <- serverUp server
+  case result of
+    Left err -> error $ show err
+    Right () -> pure ()
 
--- Delete a key
-deleteKey :: Client -> Text -> IO (Either TailscaleError ())
+  -- Get our Tailscale IPs
+  (ipv4, ipv6) <- serverTailscaleIPs server
+  putStrLn $ "IPv4: " <> show ipv4
+  putStrLn $ "IPv6: " <> show ipv6
 
--- Helper functions for creating key capabilities
-mkReusableKey :: [Text] -> KeyCapabilities
-mkEphemeralKey :: [Text] -> KeyCapabilities
-mkPreauthorizedKey :: [Text] -> KeyCapabilities
+  -- Listen for connections on the tailnet
+  listener <- serverListen server "tcp" ":8080"
+  case listener of
+    Left err -> error $ show err
+    Right ln -> do
+      putStrLn "Listening on Tailscale network..."
+      -- Accept connections in a loop
+      acceptLoop ln
+
+  serverClose server
+
+acceptLoop :: Listener -> IO ()
+acceptLoop ln = do
+  connResult <- listenerAccept ln
+  case connResult of
+    Left err -> print err
+    Right conn -> do
+      remoteAddr <- connRemoteAddr conn
+      putStrLn $ "Connection from: " <> show remoteAddr
+      -- Handle connection...
+      connClose conn
+  acceptLoop ln
 ```
 
-### ACLs
+#### Building TSNet
+
+TSNet requires building a shared library from Go:
+
+```bash
+# Build the shared library
+make build-go
+
+# Or manually:
+cd go
+go mod tidy
+go build -buildmode=c-shared -o ../libtsnet.so tsnet_ffi.go
+
+# Then build your Haskell project with:
+cabal build --extra-lib-dirs=/path/to/hs-tailscale
+```
+
+#### TSNet with Automatic TLS
 
 ```haskell
--- Get ACLs
-getACL :: Client -> IO (Either TailscaleError ACL)
-getACLHuJSON :: Client -> IO (Either TailscaleError ACLHuJSON)
-
--- Set ACLs
-setACL :: Client -> ACL -> Bool -> IO (Either TailscaleError ACL)
-setACLHuJSON :: Client -> ACLHuJSON -> Bool -> IO (Either TailscaleError ACLHuJSON)
-
--- Preview ACLs
-previewACLForUser :: Client -> ACL -> Text -> IO (Either TailscaleError ACLPreview)
-previewACLForIPPort :: Client -> ACL -> Text -> IO (Either TailscaleError ACLPreview)
-
--- Validate ACLs
-validateACLJSON :: Client -> Text -> Text -> IO (Either TailscaleError (Maybe ACLTestError))
+-- ListenTLS automatically provisions HTTPS certificates
+listener <- serverListenTLS server "tcp" ":443"
 ```
 
-### Routes
+#### TSNet with Funnel (Public Internet)
 
 ```haskell
--- Get device routes
-getRoutes :: Client -> Text -> IO (Either TailscaleError Routes)
-
--- Set enabled routes
-setRoutes :: Client -> Text -> [Text] -> IO (Either TailscaleError Routes)
+-- Expose to the public internet via Tailscale Funnel
+listener <- serverListenFunnel server "tcp" ":443" False
+-- Now accessible at https://my-haskell-app.your-tailnet.ts.net from anywhere!
 ```
 
-### Tailnet
+## API Reference
 
-```haskell
--- Delete a tailnet (use with caution!)
-deleteTailnet :: Client -> Text -> IO (Either TailscaleError ())
-```
+### Control Plane API
+
+| Module | Functions |
+|--------|-----------|
+| **Device** | `getDevices`, `getDevice`, `deleteDevice`, `authorizeDevice`, `setAuthorized`, `setTags` |
+| **DNS** | `getDNSConfig`, `setDNSConfig`, `getNameServers`, `setNameServers`, `getDNSPreferences`, `setDNSPreferences`, `getSearchPaths`, `setSearchPaths` |
+| **Keys** | `getKeys`, `getKey`, `createKey`, `createKeyWithExpiry`, `deleteKey`, `mkReusableKey`, `mkEphemeralKey`, `mkPreauthorizedKey` |
+| **ACL** | `getACL`, `getACLHuJSON`, `setACL`, `setACLHuJSON`, `previewACLForUser`, `previewACLForIPPort`, `validateACLJSON` |
+| **Routes** | `getRoutes`, `setRoutes` |
+| **Tailnet** | `deleteTailnet` |
+
+### LocalAPI
+
+| Function | Description |
+|----------|-------------|
+| `getStatus` | Get full daemon status with peers |
+| `getStatusWithoutPeers` | Get status without peer info (faster) |
+| `whoIs` | Identify who owns a remote address |
+| `getCertPair` | Get TLS certificate for a domain |
+| `getPrefs` | Get current preferences |
+| `ping` | Ping a peer |
+| `getServeConfig` / `setServeConfig` | Manage Tailscale Serve |
+| `getNetworkLockStatus` | Get tailnet lock status |
+
+### TSNet
+
+| Function | Description |
+|----------|-------------|
+| `newServer` | Create a new embedded server |
+| `serverUp` | Start and wait until connected |
+| `serverListen` | Listen on the tailnet |
+| `serverListenTLS` | Listen with automatic TLS |
+| `serverListenFunnel` | Listen via public internet |
+| `serverDial` | Make outbound connections |
+| `serverTailscaleIPs` | Get assigned IPs |
+| `serverCertDomains` | Get certificate domains |
 
 ## Error Handling
 
-All API functions return `Either TailscaleError a`. The error type covers:
+All API functions return `Either TailscaleError a` or `Either TSNetError a`:
 
 ```haskell
 data TailscaleError
@@ -143,17 +229,37 @@ data TailscaleError
   | HttpError Text          -- HTTP-level error
   | JsonError Text          -- JSON parsing error
   | NetworkError Text       -- Network connectivity error
+
+data TSNetError
+  = TSNetStartError Text
+  | TSNetListenError Text
+  | TSNetDialError Text
+  | TSNetReadError Text
+  | TSNetWriteError Text
+  | TSNetCloseError Text
+  | TSNetEOF
 ```
 
 ## Dependencies
 
-This library uses common Haskell packages:
-- `aeson` for JSON serialization
-- `http-client` and `http-client-tls` for HTTP
-- `text` and `bytestring` for strings
-- `time` for timestamps
-- `containers` for `Map`
+**Core library** (no FFI):
+- `aeson` - JSON serialization
+- `http-client` / `http-client-tls` - HTTP client
+- `text` / `bytestring` - String types
+- `time` - Timestamps
+- `containers` - Map type
+- `network` - Socket operations
+- `directory` / `filepath` - File operations
+
+**TSNet library** (requires Go):
+- libtsnet.so (built from Go code in `go/`)
 
 ## License
 
 BSD-3-Clause, same as the original Tailscale SDK.
+
+## Related Projects
+
+- [Tailscale Go SDK](https://github.com/tailscale/tailscale/tree/main/client/tailscale)
+- [tsnet](https://pkg.go.dev/tailscale.com/tsnet) - The Go package this ports
+- [Caddy Tailscale Plugin](https://github.com/tailscale/caddy-tailscale) - Similar concept for Caddy

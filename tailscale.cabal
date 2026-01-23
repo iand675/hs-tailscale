@@ -5,6 +5,9 @@ synopsis:           Haskell client for the Tailscale API
 description:        A direct port of the official Tailscale Go SDK for Haskell.
                     Provides access to the Tailscale control plane API for managing
                     devices, DNS settings, ACLs, auth keys, and routes.
+                    .
+                    Also includes support for the LocalAPI (communication with the
+                    local tailscaled daemon) and tsnet (embedded Tailscale server).
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Ian Duncan
@@ -12,9 +15,15 @@ maintainer:         ian@iankduncan.com
 category:           Network
 build-type:         Simple
 extra-doc-files:    README.md
+extra-source-files:
+  cbits/tsnet.h
+  go/tsnet_ffi.go
+  go/go.mod
 
+-- Main library without FFI dependencies
 library
   exposed-modules:
+    -- Control Plane API
     Tailscale
     Tailscale.Client
     Tailscale.Types
@@ -24,17 +33,48 @@ library
     Tailscale.ACL
     Tailscale.Routes
     Tailscale.Tailnet
+    -- LocalAPI (tailscaled daemon)
+    Tailscale.LocalAPI
+    Tailscale.LocalAPI.Types
+    -- Server utilities
+    Tailscale.Server
 
   build-depends:
     , aeson           >= 2.0    && < 2.3
     , base            >= 4.14   && < 5
     , bytestring      >= 0.10   && < 0.13
     , containers      >= 0.6    && < 0.8
+    , directory       >= 1.3    && < 1.4
+    , filepath        >= 1.4    && < 1.6
     , http-client     >= 0.7    && < 0.8
     , http-client-tls >= 0.3    && < 0.4
     , http-types      >= 0.12   && < 0.13
+    , network         >= 3.1    && < 3.3
     , text            >= 1.2    && < 2.2
     , time            >= 1.9    && < 1.15
+
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+-- TSNet library (requires building libtsnet.so from Go)
+--
+-- To use this library:
+-- 1. cd go && go mod tidy && go build -buildmode=c-shared -o ../libtsnet.so tsnet_ffi.go
+-- 2. Add this flag to your cabal build: --extra-lib-dirs=/path/to/hs-tailscale
+-- 3. Link with: -ltsnet
+library tailscale-tsnet
+  exposed-modules:
+    Tailscale.TSNet
+    Tailscale.TSNet.FFI
+
+  build-depends:
+    , base >= 4.14 && < 5
+    , text >= 1.2  && < 2.2
+
+  -- Note: You must have libtsnet.so built and available
+  -- extra-libraries: tsnet
+  -- include-dirs: cbits
 
   hs-source-dirs:   src
   default-language: Haskell2010
