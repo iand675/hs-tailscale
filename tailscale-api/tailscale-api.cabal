@@ -1,0 +1,61 @@
+cabal-version:      2.4
+name:               tailscale-api
+version:            0.1.0.0
+synopsis:           Haskell client for the Tailscale REST API
+description:        A Haskell client library for the Tailscale control plane API,
+                    providing functions for managing devices, DNS settings, ACLs,
+                    authentication keys, and routes.
+                    .
+                    This is a port of the official Tailscale Go SDK.
+                    .
+                    = Quick Start
+                    .
+                    @
+                    import Tailscale.API
+                    .
+                    main :: IO ()
+                    main = do
+                      client <- newClient "your-tailnet.com" (APIKey "tskey-api-...")
+                      result <- getDevices client Nothing
+                      case result of
+                        Left err -> print err
+                        Right devices -> mapM_ (print . deviceName) devices
+                    @
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Ian Duncan
+maintainer:         ian@iankduncan.com
+category:           Network, Web
+build-type:         Simple
+extra-doc-files:    README.md
+
+library
+  exposed-modules:
+    Tailscale.API
+    Tailscale.API.Client
+    Tailscale.API.Types
+    Tailscale.API.Device
+    Tailscale.API.DNS
+    Tailscale.API.Keys
+    Tailscale.API.ACL
+    Tailscale.API.Routes
+    Tailscale.API.Tailnet
+
+  build-depends:
+    , aeson           >= 2.0    && < 2.3
+    , base            >= 4.14   && < 5
+    , bytestring      >= 0.10   && < 0.13
+    , containers      >= 0.6    && < 0.8
+    , http-client     >= 0.7    && < 0.8
+    , http-client-tls >= 0.3    && < 0.4
+    , http-types      >= 0.12   && < 0.13
+    , text            >= 1.2    && < 2.2
+    , time            >= 1.9    && < 1.15
+
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+source-repository head
+  type:     git
+  location: https://github.com/iand675/hs-tailscale.git

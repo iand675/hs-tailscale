@@ -75,6 +75,8 @@ library
     , stm             >= 2.5    && < 2.6
     , text            >= 1.2    && < 2.2
     , time            >= 1.9    && < 1.15
+    , tailscale-api
+    , tsnet
     , wireguard
 
   hs-source-dirs:   src

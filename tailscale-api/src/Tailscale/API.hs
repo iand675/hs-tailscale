@@ -1,39 +1,32 @@
 {- |
-Module      : Tailscale
-Description : Haskell client for the Tailscale API
+Module      : Tailscale.API
+Description : Haskell client for the Tailscale REST API
 License     : BSD-3-Clause
 
-This module re-exports the Tailscale API client from the @tailscale-api@ package.
+This is a Haskell client for the Tailscale control plane API, providing
+functions for managing devices, DNS settings, ACLs, authentication keys,
+and routes.
 
 = Quick Start
 
 @
-import Tailscale
+import Tailscale.API
 
 main :: IO ()
 main = do
-  -- Create a client with your API key
   client <- newClient "your-tailnet.com" (APIKey "tskey-api-...")
-
-  -- List all devices
   result <- getDevices client Nothing
   case result of
     Left err -> print err
     Right devices -> mapM_ (print . deviceName) devices
 @
 
-= API Coverage
+= Authentication
 
-This library covers the following Tailscale API endpoints:
-
-* __Devices__: List, get, delete, authorize, and tag devices
-* __DNS__: Configure nameservers, search paths, and MagicDNS
-* __Keys__: Create and manage authentication keys
-* __ACLs__: Read and write access control lists
-* __Routes__: Manage subnet routes on devices
-* __Tailnet__: Tailnet-level operations
+The Tailscale API uses API keys for authentication. Create an API key at:
+<https://login.tailscale.com/admin/settings/keys>
 -}
-module Tailscale (
+module Tailscale.API (
   -- * Client
   Client,
   newClient,
@@ -121,4 +114,11 @@ module Tailscale (
   deleteTailnet,
 ) where
 
-import Tailscale.API
+import Tailscale.API.ACL
+import Tailscale.API.Client
+import Tailscale.API.DNS
+import Tailscale.API.Device
+import Tailscale.API.Keys
+import Tailscale.API.Routes
+import Tailscale.API.Tailnet
+import Tailscale.API.Types
