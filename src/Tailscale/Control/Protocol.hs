@@ -35,6 +35,7 @@ module Tailscale.Control.Protocol
     -- * Registration
   , RegisterRequest (..)
   , RegisterResponse (..)
+  , AuthInfo (..)
 
     -- * Map Requests
   , MapRequest (..)

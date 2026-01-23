@@ -52,7 +52,7 @@ module Tailscale.Types
   , Routes (..)
   ) where
 
-import Data.Aeson
+import Data.Aeson hiding (Key)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Time (UTCTime)

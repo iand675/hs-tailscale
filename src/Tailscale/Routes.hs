@@ -18,7 +18,7 @@ import Data.Aeson (FromJSON, eitherDecode, encode, object, (.=))
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
 import qualified Data.Text as T
-import Network.HTTP.Client (Request (..), parseRequest)
+import Network.HTTP.Client (Request (..), RequestBody(RequestBodyLBS), parseRequest)
 import Network.HTTP.Types.Header (hContentType)
 
 import Tailscale.Client

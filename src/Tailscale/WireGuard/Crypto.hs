@@ -189,7 +189,9 @@ mac key input =
 kdf1 :: ByteString -> ByteString -> SymmetricKey
 kdf1 key input =
   let HMAC t0 = hmac key input :: HMAC Blake2s_256
-      HMAC t1 = hmac (convert t0) (BS.singleton 0x01) :: HMAC Blake2s_256
+      t0Bytes :: ByteString
+      t0Bytes = convert t0
+      HMAC t1 = hmac t0Bytes (BS.singleton 0x01) :: HMAC Blake2s_256
   in SymmetricKey $ convert t1
 
 -- | Key derivation function (2 outputs)
@@ -201,8 +203,10 @@ kdf1 key input =
 kdf2 :: ByteString -> ByteString -> (SymmetricKey, SymmetricKey)
 kdf2 key input =
   let HMAC t0 = hmac key input :: HMAC Blake2s_256
+      t0Bytes :: ByteString
       t0Bytes = convert t0
       HMAC t1 = hmac t0Bytes (BS.singleton 0x01) :: HMAC Blake2s_256
+      t1Bytes :: ByteString
       t1Bytes = convert t1
       HMAC t2 = hmac t0Bytes (t1Bytes <> BS.singleton 0x02) :: HMAC Blake2s_256
   in (SymmetricKey t1Bytes, SymmetricKey $ convert t2)
@@ -213,10 +217,13 @@ kdf2 key input =
 kdf3 :: ByteString -> ByteString -> (SymmetricKey, SymmetricKey, SymmetricKey)
 kdf3 key input =
   let HMAC t0 = hmac key input :: HMAC Blake2s_256
+      t0Bytes :: ByteString
       t0Bytes = convert t0
       HMAC t1 = hmac t0Bytes (BS.singleton 0x01) :: HMAC Blake2s_256
+      t1Bytes :: ByteString
       t1Bytes = convert t1
       HMAC t2 = hmac t0Bytes (t1Bytes <> BS.singleton 0x02) :: HMAC Blake2s_256
+      t2Bytes :: ByteString
       t2Bytes = convert t2
       HMAC t3 = hmac t0Bytes (t2Bytes <> BS.singleton 0x03) :: HMAC Blake2s_256
   in (SymmetricKey t1Bytes, SymmetricKey t2Bytes, SymmetricKey $ convert t3)

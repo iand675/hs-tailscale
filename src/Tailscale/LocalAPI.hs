@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
 -- Module      : Tailscale.LocalAPI
@@ -100,8 +101,7 @@ import Network.HTTP.Client
 import Network.HTTP.Client.Internal (Connection, makeConnection, openSocketConnection)
 import Network.HTTP.Types.Header (hAccept, hContentType)
 import Network.HTTP.Types.Status (statusCode)
-import Network.Socket (Family(AF_UNIX), SocketType(Stream), socket, connect, close)
-import Network.Socket.Address (SockAddr(SockAddrUnix))
+import Network.Socket (Family(AF_UNIX), SocketType(Stream), SockAddr(SockAddrUnix), HostAddress, socket, connect, close)
 import qualified Network.Socket.ByteString as SBS
 import System.Info (os)
 

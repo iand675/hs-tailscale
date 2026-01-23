@@ -24,12 +24,12 @@ module Tailscale.Keys
   , mkPreauthorizedKey
   ) where
 
-import Data.Aeson (FromJSON, eitherDecode, encode, object, (.:), (.:?), (.=), withObject)
+import Data.Aeson (FromJSON(..), eitherDecode, encode, object, (.:), (.:?), (.=), withObject)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time (NominalDiffTime)
-import Network.HTTP.Client (Request (..), parseRequest)
+import Network.HTTP.Client (Request (..), RequestBody(RequestBodyLBS), parseRequest)
 import Network.HTTP.Types.Header (hContentType)
 
 import Tailscale.Client

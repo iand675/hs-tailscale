@@ -31,7 +31,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Network.HTTP.Client (Request (..), parseRequest, requestHeaders)
+import Network.HTTP.Client (Request (..), RequestBody(RequestBodyLBS), parseRequest, requestHeaders)
 import Network.HTTP.Types.Header (hAccept, hContentType, hIfMatch)
 
 import Tailscale.Client
