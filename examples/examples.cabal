@@ -1,0 +1,91 @@
+cabal-version:      2.4
+name:               examples
+version:            0.1.0.0
+synopsis:           End-to-end examples for hs-tailscale packages
+description:        Comprehensive examples demonstrating the wireguard, tailscale-api,
+                    and tsnet packages with detailed debugging output for iterative
+                    development and testing.
+license:            BSD-3-Clause
+author:             Ian Duncan
+maintainer:         ian@iankduncan.com
+category:           Network, Examples
+build-type:         Simple
+
+common common-options
+  default-language: Haskell2010
+  ghc-options:      -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+    , aeson                 >= 2.0    && < 2.3
+    , aeson-pretty          >= 0.8    && < 0.9
+    , base                  >= 4.14   && < 5
+    , base16-bytestring     >= 1.0    && < 1.1
+    , base64-bytestring     >= 1.2    && < 1.3
+    , bytestring            >= 0.10   && < 0.13
+    , containers            >= 0.6    && < 0.8
+    , text                  >= 1.2    && < 2.2
+    , time                  >= 1.9    && < 1.15
+    , tailscale-api
+    , tsnet
+    , wireguard
+
+library
+  import:           common-options
+  hs-source-dirs:   src
+  exposed-modules:
+    Examples.Debug
+
+executable wireguard-crypto-example
+  import:           common-options
+  main-is:          WireGuardCrypto.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples
+
+executable noise-handshake-example
+  import:           common-options
+  main-is:          NoiseHandshake.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples
+
+executable tailscale-api-example
+  import:           common-options
+  main-is:          TailscaleAPI.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples
+
+executable local-api-example
+  import:           common-options
+  main-is:          LocalAPI.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples
+
+executable embedded-tailscale-example
+  import:           common-options
+  main-is:          EmbeddedTailscale.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples
+
+executable control-plane-example
+  import:           common-options
+  main-is:          ControlPlane.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples
+
+executable derp-client-example
+  import:           common-options
+  main-is:          DERPClient.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples
+
+executable packet-parsing-example
+  import:           common-options
+  main-is:          PacketParsing.hs
+  hs-source-dirs:   app
+  build-depends:
+    , examples

@@ -3,3 +3,4 @@ packages:
   wireguard/
   tailscale-api/
   tsnet/
+  examples/
