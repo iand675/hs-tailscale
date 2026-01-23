@@ -1,0 +1,70 @@
+cabal-version:      2.4
+name:               wireguard
+version:            0.1.0.0
+synopsis:           Pure Haskell WireGuard protocol implementation
+description:        A pure Haskell implementation of the WireGuard protocol,
+                    including:
+                    .
+                    * Curve25519 ECDH key exchange
+                    * ChaCha20-Poly1305 AEAD encryption
+                    * BLAKE2s hashing and key derivation
+                    * Noise_IKpsk2 handshake pattern
+                    * WireGuard packet format parsing and serialization
+                    .
+                    This library is conformant with the WireGuard specification
+                    and includes extensive test vectors from the protocol specification.
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Ian Duncan
+maintainer:         ian@iankduncan.com
+category:           Network, Cryptography
+build-type:         Simple
+extra-doc-files:    README.md
+
+library
+  exposed-modules:
+    WireGuard
+    WireGuard.Crypto
+    WireGuard.Noise
+    WireGuard.Protocol
+    WireGuard.Bits
+
+  build-depends:
+    , base            >= 4.14   && < 5
+    , bytestring      >= 0.10   && < 0.13
+    , crypton         >= 0.32   && < 1.1
+    , memory          >= 0.18   && < 0.19
+    , stm             >= 2.5    && < 2.6
+    , time            >= 1.9    && < 1.15
+
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite wireguard-test
+  type:             exitcode-stdio-1.0
+  main-is:          Main.hs
+  other-modules:
+    CryptoSpec
+    NoiseSpec
+    ProtocolSpec
+    TestVectors
+    InteropSpec
+  hs-source-dirs:   test
+  default-language: Haskell2010
+  ghc-options:      -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+    , base            >= 4.14 && < 5
+    , base16-bytestring >= 1.0 && < 1.1
+    , bytestring
+    , crypton
+    , memory
+    , QuickCheck      >= 2.14 && < 2.16
+    , tasty           >= 1.4  && < 1.6
+    , tasty-hunit     >= 0.10 && < 0.11
+    , tasty-quickcheck >= 0.10 && < 0.12
+    , wireguard
+
+source-repository head
+  type:     git
+  location: https://github.com/iand675/hs-tailscale.git

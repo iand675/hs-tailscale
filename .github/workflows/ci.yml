@@ -59,8 +59,13 @@ jobs:
       - name: Build
         run: cabal build all
 
-      - name: Check cabal file
-        run: cabal check
+      - name: Run tests
+        run: cabal test all
+
+      - name: Check cabal files
+        run: |
+          cabal check
+          cd wireguard && cabal check
 
   hlint:
     name: HLint
@@ -77,7 +82,7 @@ jobs:
       - name: Run HLint
         uses: haskell-actions/hlint-run@v2
         with:
-          path: src/
+          path: '["src/", "wireguard/src/", "wireguard/test/"]'
           fail-on: warning
 
   formatting:
@@ -91,4 +96,7 @@ jobs:
         uses: haskell-actions/run-fourmolu@v10
         with:
           version: "0.14.0.0"
-          pattern: "src/**/*.hs"
+          pattern: |
+            src/**/*.hs
+            wireguard/src/**/*.hs
+            wireguard/test/**/*.hs
