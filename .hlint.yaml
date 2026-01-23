@@ -1,0 +1,10 @@
+# HLint configuration file
+
+# Ignore certain hints
+- ignore: {name: "Use newtype instead of data"}
+- ignore: {name: "Redundant bracket"}
+- ignore: {name: "Use camelCase"}
+
+# Allow common patterns
+- ignore: {name: "Eta reduce"}
+- ignore: {name: "Avoid lambda"}
