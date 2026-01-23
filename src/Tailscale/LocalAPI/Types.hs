@@ -2,50 +2,51 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- |
--- Module      : Tailscale.LocalAPI.Types
--- Description : Types for the Tailscale LocalAPI
--- License     : BSD-3-Clause
---
--- This module contains types for communicating with the local tailscaled daemon.
--- The LocalAPI provides access to the running Tailscale instance on the machine.
-module Tailscale.LocalAPI.Types
-  ( -- * Status Types
-    Status (..)
-  , PeerStatus (..)
-  , TailscaleIP (..)
-  , BackendState (..)
+{- |
+Module      : Tailscale.LocalAPI.Types
+Description : Types for the Tailscale LocalAPI
+License     : BSD-3-Clause
 
-    -- * WhoIs Types
-  , WhoIsResponse (..)
-  , Node (..)
-  , UserProfile (..)
-  , CapabilityMap (..)
+This module contains types for communicating with the local tailscaled daemon.
+The LocalAPI provides access to the running Tailscale instance on the machine.
+-}
+module Tailscale.LocalAPI.Types (
+  -- * Status Types
+  Status (..),
+  PeerStatus (..),
+  TailscaleIP (..),
+  BackendState (..),
 
-    -- * Certificate Types
-  , CertPair (..)
+  -- * WhoIs Types
+  WhoIsResponse (..),
+  Node (..),
+  UserProfile (..),
+  CapabilityMap (..),
 
-    -- * Preferences
-  , Prefs (..)
+  -- * Certificate Types
+  CertPair (..),
 
-    -- * Ping Types
-  , PingResult (..)
-  , PingType (..)
+  -- * Preferences
+  Prefs (..),
 
-    -- * File Transfer Types
-  , WaitingFile (..)
-  , FileTarget (..)
+  -- * Ping Types
+  PingResult (..),
+  PingType (..),
 
-    -- * Serve Config Types
-  , ServeConfig (..)
-  , ServeConfigHandler (..)
+  -- * File Transfer Types
+  WaitingFile (..),
+  FileTarget (..),
 
-    -- * Network Lock Types
-  , NetworkLockStatus (..)
+  -- * Serve Config Types
+  ServeConfig (..),
+  ServeConfigHandler (..),
 
-    -- * Error Types
-  , LocalAPIError (..)
-  ) where
+  -- * Network Lock Types
+  NetworkLockStatus (..),
+
+  -- * Error Types
+  LocalAPIError (..),
+) where
 
 import Data.Aeson
 import Data.Map.Strict (Map)
@@ -84,30 +85,30 @@ data BackendState
 
 instance FromJSON BackendState where
   parseJSON = withText "BackendState" $ \t -> pure $ case t of
-    "NoState"          -> StateNoState
-    "NeedsLogin"       -> StateNeedsLogin
+    "NoState" -> StateNoState
+    "NeedsLogin" -> StateNeedsLogin
     "NeedsMachineAuth" -> StateNeedsMachineAuth
-    "Running"          -> StateRunning
-    "Stopped"          -> StateStopped
-    "Starting"         -> StateStarting
-    "Stopping"         -> StateStopping
-    _                  -> StateNoState
+    "Running" -> StateRunning
+    "Stopped" -> StateStopped
+    "Starting" -> StateStarting
+    "Stopping" -> StateStopping
+    _ -> StateNoState
 
 instance ToJSON BackendState where
-  toJSON StateNoState          = "NoState"
-  toJSON StateNeedsLogin       = "NeedsLogin"
+  toJSON StateNoState = "NoState"
+  toJSON StateNeedsLogin = "NeedsLogin"
   toJSON StateNeedsMachineAuth = "NeedsMachineAuth"
-  toJSON StateRunning          = "Running"
-  toJSON StateStopped          = "Stopped"
-  toJSON StateStarting         = "Starting"
-  toJSON StateStopping         = "Stopping"
+  toJSON StateRunning = "Running"
+  toJSON StateStopped = "Stopped"
+  toJSON StateStarting = "Starting"
+  toJSON StateStopping = "Stopping"
 
 --------------------------------------------------------------------------------
 -- Tailscale IP
 --------------------------------------------------------------------------------
 
 -- | A Tailscale IP address (can be IPv4 or IPv6)
-newtype TailscaleIP = TailscaleIP { unTailscaleIP :: Text }
+newtype TailscaleIP = TailscaleIP {unTailscaleIP :: Text}
   deriving (Eq, Show, Generic)
 
 instance FromJSON TailscaleIP where
@@ -122,22 +123,22 @@ instance ToJSON TailscaleIP where
 
 -- | Status of the local Tailscale daemon
 data Status = Status
-  { statusBackendState      :: !BackendState
-  , statusAuthURL           :: !(Maybe Text)
-  , statusTailscaleIPs      :: !(Maybe [TailscaleIP])
-  , statusSelf              :: !(Maybe PeerStatus)
-  , statusPeers             :: !(Maybe (Map Text PeerStatus))
-  , statusMagicDNSSuffix    :: !(Maybe Text)
-  , statusCurrentTailnet    :: !(Maybe TailnetStatus)
-  , statusCertDomains       :: !(Maybe [Text])
-  , statusVersion           :: !(Maybe Text)
+  { statusBackendState :: !BackendState
+  , statusAuthURL :: !(Maybe Text)
+  , statusTailscaleIPs :: !(Maybe [TailscaleIP])
+  , statusSelf :: !(Maybe PeerStatus)
+  , statusPeers :: !(Maybe (Map Text PeerStatus))
+  , statusMagicDNSSuffix :: !(Maybe Text)
+  , statusCurrentTailnet :: !(Maybe TailnetStatus)
+  , statusCertDomains :: !(Maybe [Text])
+  , statusVersion :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON Status where
   parseJSON = withObject "Status" $ \o ->
     Status
-      <$> o .:  "BackendState"
+      <$> o .: "BackendState"
       <*> o .:? "AuthURL"
       <*> o .:? "TailscaleIPs"
       <*> o .:? "Self"
@@ -149,7 +150,7 @@ instance FromJSON Status where
 
 -- | Information about the current tailnet
 data TailnetStatus = TailnetStatus
-  { tailnetName        :: !Text
+  { tailnetName :: !Text
   , tailnetMagicDNSName :: !(Maybe Text)
   , tailnetMagicDNSEnabled :: !(Maybe Bool)
   }
@@ -158,35 +159,35 @@ data TailnetStatus = TailnetStatus
 instance FromJSON TailnetStatus where
   parseJSON = withObject "TailnetStatus" $ \o ->
     TailnetStatus
-      <$> o .:  "Name"
+      <$> o .: "Name"
       <*> o .:? "MagicDNSName"
       <*> o .:? "MagicDNSEnabled"
 
 -- | Status of a peer (including self)
 data PeerStatus = PeerStatus
-  { peerID              :: !(Maybe Text)
-  , peerPublicKey       :: !Text
-  , peerHostName        :: !Text
-  , peerDNSName         :: !(Maybe Text)
-  , peerOS              :: !(Maybe Text)
-  , peerUserID          :: !(Maybe Int)
-  , peerTailscaleIPs    :: !(Maybe [TailscaleIP])
-  , peerAddrs           :: !(Maybe [Text])
-  , peerCurAddr         :: !(Maybe Text)
-  , peerRelay           :: !(Maybe Text)
-  , peerRxBytes         :: !(Maybe Int)
-  , peerTxBytes         :: !(Maybe Int)
-  , peerCreated         :: !(Maybe UTCTime)
-  , peerLastSeen        :: !(Maybe UTCTime)
-  , peerLastWrite       :: !(Maybe UTCTime)
-  , peerOnline          :: !(Maybe Bool)
-  , peerExitNode        :: !(Maybe Bool)
-  , peerExitNodeOption  :: !(Maybe Bool)
-  , peerActive          :: !(Maybe Bool)
-  , peerTags            :: !(Maybe [Text])
-  , peerInNetworkMap    :: !(Maybe Bool)
-  , peerInMagicSock     :: !(Maybe Bool)
-  , peerInEngine        :: !(Maybe Bool)
+  { peerID :: !(Maybe Text)
+  , peerPublicKey :: !Text
+  , peerHostName :: !Text
+  , peerDNSName :: !(Maybe Text)
+  , peerOS :: !(Maybe Text)
+  , peerUserID :: !(Maybe Int)
+  , peerTailscaleIPs :: !(Maybe [TailscaleIP])
+  , peerAddrs :: !(Maybe [Text])
+  , peerCurAddr :: !(Maybe Text)
+  , peerRelay :: !(Maybe Text)
+  , peerRxBytes :: !(Maybe Int)
+  , peerTxBytes :: !(Maybe Int)
+  , peerCreated :: !(Maybe UTCTime)
+  , peerLastSeen :: !(Maybe UTCTime)
+  , peerLastWrite :: !(Maybe UTCTime)
+  , peerOnline :: !(Maybe Bool)
+  , peerExitNode :: !(Maybe Bool)
+  , peerExitNodeOption :: !(Maybe Bool)
+  , peerActive :: !(Maybe Bool)
+  , peerTags :: !(Maybe [Text])
+  , peerInNetworkMap :: !(Maybe Bool)
+  , peerInMagicSock :: !(Maybe Bool)
+  , peerInEngine :: !(Maybe Bool)
   }
   deriving (Eq, Show, Generic)
 
@@ -194,8 +195,8 @@ instance FromJSON PeerStatus where
   parseJSON = withObject "PeerStatus" $ \o ->
     PeerStatus
       <$> o .:? "ID"
-      <*> o .:  "PublicKey"
-      <*> o .:  "HostName"
+      <*> o .: "PublicKey"
+      <*> o .: "HostName"
       <*> o .:? "DNSName"
       <*> o .:? "OS"
       <*> o .:? "UserID"
@@ -223,35 +224,35 @@ instance FromJSON PeerStatus where
 
 -- | Response from WhoIs query identifying a connection
 data WhoIsResponse = WhoIsResponse
-  { whoIsNode        :: !Node
+  { whoIsNode :: !Node
   , whoIsUserProfile :: !UserProfile
-  , whoIsCapMap      :: !(Maybe CapabilityMap)
+  , whoIsCapMap :: !(Maybe CapabilityMap)
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON WhoIsResponse where
   parseJSON = withObject "WhoIsResponse" $ \o ->
     WhoIsResponse
-      <$> o .:  "Node"
-      <*> o .:  "UserProfile"
+      <$> o .: "Node"
+      <*> o .: "UserProfile"
       <*> o .:? "CapMap"
 
 -- | Node information from WhoIs
 data Node = Node
-  { nodeID          :: !Int
-  , nodeStableID    :: !Text
-  , nodeName        :: !Text
-  , nodeUser        :: !Int
-  , nodeKey         :: !Text
-  , nodeKeyExpiry   :: !(Maybe UTCTime)
-  , nodeMachine     :: !(Maybe Text)
-  , nodeAddresses   :: !(Maybe [Text])
-  , nodeAllowedIPs  :: !(Maybe [Text])
-  , nodeEndpoints   :: !(Maybe [Text])
-  , nodeDERP        :: !(Maybe Text)
-  , nodeHostinfo    :: !(Maybe Value)
-  , nodeCreated     :: !(Maybe UTCTime)
-  , nodeTags        :: !(Maybe [Text])
+  { nodeID :: !Int
+  , nodeStableID :: !Text
+  , nodeName :: !Text
+  , nodeUser :: !Int
+  , nodeKey :: !Text
+  , nodeKeyExpiry :: !(Maybe UTCTime)
+  , nodeMachine :: !(Maybe Text)
+  , nodeAddresses :: !(Maybe [Text])
+  , nodeAllowedIPs :: !(Maybe [Text])
+  , nodeEndpoints :: !(Maybe [Text])
+  , nodeDERP :: !(Maybe Text)
+  , nodeHostinfo :: !(Maybe Value)
+  , nodeCreated :: !(Maybe UTCTime)
+  , nodeTags :: !(Maybe [Text])
   , nodeComputedName :: !(Maybe Text)
   , nodeComputedNameWithHost :: !(Maybe Text)
   }
@@ -260,11 +261,11 @@ data Node = Node
 instance FromJSON Node where
   parseJSON = withObject "Node" $ \o ->
     Node
-      <$> o .:  "ID"
-      <*> o .:  "StableID"
-      <*> o .:  "Name"
-      <*> o .:  "User"
-      <*> o .:  "Key"
+      <$> o .: "ID"
+      <*> o .: "StableID"
+      <*> o .: "Name"
+      <*> o .: "User"
+      <*> o .: "Key"
       <*> o .:? "KeyExpiry"
       <*> o .:? "Machine"
       <*> o .:? "Addresses"
@@ -279,25 +280,25 @@ instance FromJSON Node where
 
 -- | User profile from WhoIs
 data UserProfile = UserProfile
-  { userProfileID            :: !Int
-  , userProfileLoginName     :: !Text
-  , userProfileDisplayName   :: !Text
+  { userProfileID :: !Int
+  , userProfileLoginName :: !Text
+  , userProfileDisplayName :: !Text
   , userProfileProfilePicURL :: !(Maybe Text)
-  , userProfileRoles         :: !(Maybe [Text])
+  , userProfileRoles :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON UserProfile where
   parseJSON = withObject "UserProfile" $ \o ->
     UserProfile
-      <$> o .:  "ID"
-      <*> o .:  "LoginName"
-      <*> o .:  "DisplayName"
+      <$> o .: "ID"
+      <*> o .: "LoginName"
+      <*> o .: "DisplayName"
       <*> o .:? "ProfilePicURL"
       <*> o .:? "Roles"
 
 -- | Capability map from WhoIs
-newtype CapabilityMap = CapabilityMap { unCapabilityMap :: Map Text [Text] }
+newtype CapabilityMap = CapabilityMap {unCapabilityMap :: Map Text [Text]}
   deriving (Eq, Show, Generic)
 
 instance FromJSON CapabilityMap where
@@ -310,7 +311,7 @@ instance FromJSON CapabilityMap where
 -- | A TLS certificate pair from Tailscale
 data CertPair = CertPair
   { certPEM :: !Text
-  , keyPEM  :: !Text
+  , keyPEM :: !Text
   }
   deriving (Eq, Show, Generic)
 
@@ -320,20 +321,20 @@ data CertPair = CertPair
 
 -- | Tailscale preferences
 data Prefs = Prefs
-  { prefsControlURL          :: !(Maybe Text)
-  , prefsRouteAll            :: !(Maybe Bool)
-  , prefsAllowSingleHosts    :: !(Maybe Bool)
-  , prefsCorpDNS             :: !(Maybe Bool)
-  , prefsWantRunning         :: !(Maybe Bool)
-  , prefsShieldsUp           :: !(Maybe Bool)
-  , prefsAdvertiseTags       :: !(Maybe [Text])
-  , prefsHostname            :: !(Maybe Text)
-  , prefsNotepadURLs         :: !(Maybe Bool)
-  , prefsForceDaemon         :: !(Maybe Bool)
-  , prefsAdvertiseRoutes     :: !(Maybe [Text])
-  , prefsNoSNAT              :: !(Maybe Bool)
-  , prefsNetfilterMode       :: !(Maybe Int)
-  , prefsOperatorUser        :: !(Maybe Text)
+  { prefsControlURL :: !(Maybe Text)
+  , prefsRouteAll :: !(Maybe Bool)
+  , prefsAllowSingleHosts :: !(Maybe Bool)
+  , prefsCorpDNS :: !(Maybe Bool)
+  , prefsWantRunning :: !(Maybe Bool)
+  , prefsShieldsUp :: !(Maybe Bool)
+  , prefsAdvertiseTags :: !(Maybe [Text])
+  , prefsHostname :: !(Maybe Text)
+  , prefsNotepadURLs :: !(Maybe Bool)
+  , prefsForceDaemon :: !(Maybe Bool)
+  , prefsAdvertiseRoutes :: !(Maybe [Text])
+  , prefsNoSNAT :: !(Maybe Bool)
+  , prefsNetfilterMode :: !(Maybe Int)
+  , prefsOperatorUser :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
@@ -356,22 +357,23 @@ instance FromJSON Prefs where
       <*> o .:? "OperatorUser"
 
 instance ToJSON Prefs where
-  toJSON Prefs{..} = object
-    [ "ControlURL"       .= prefsControlURL
-    , "RouteAll"         .= prefsRouteAll
-    , "AllowSingleHosts" .= prefsAllowSingleHosts
-    , "CorpDNS"          .= prefsCorpDNS
-    , "WantRunning"      .= prefsWantRunning
-    , "ShieldsUp"        .= prefsShieldsUp
-    , "AdvertiseTags"    .= prefsAdvertiseTags
-    , "Hostname"         .= prefsHostname
-    , "NotepadURLs"      .= prefsNotepadURLs
-    , "ForceDaemon"      .= prefsForceDaemon
-    , "AdvertiseRoutes"  .= prefsAdvertiseRoutes
-    , "NoSNAT"           .= prefsNoSNAT
-    , "NetfilterMode"    .= prefsNetfilterMode
-    , "OperatorUser"     .= prefsOperatorUser
-    ]
+  toJSON Prefs{..} =
+    object
+      [ "ControlURL" .= prefsControlURL
+      , "RouteAll" .= prefsRouteAll
+      , "AllowSingleHosts" .= prefsAllowSingleHosts
+      , "CorpDNS" .= prefsCorpDNS
+      , "WantRunning" .= prefsWantRunning
+      , "ShieldsUp" .= prefsShieldsUp
+      , "AdvertiseTags" .= prefsAdvertiseTags
+      , "Hostname" .= prefsHostname
+      , "NotepadURLs" .= prefsNotepadURLs
+      , "ForceDaemon" .= prefsForceDaemon
+      , "AdvertiseRoutes" .= prefsAdvertiseRoutes
+      , "NoSNAT" .= prefsNoSNAT
+      , "NetfilterMode" .= prefsNetfilterMode
+      , "OperatorUser" .= prefsOperatorUser
+      ]
 
 --------------------------------------------------------------------------------
 -- Ping Types
@@ -379,35 +381,38 @@ instance ToJSON Prefs where
 
 -- | Type of ping to perform
 data PingType
-  = PingTSMP     -- ^ Tailscale-specific ping
-  | PingICMP     -- ^ Standard ICMP ping
-  | PingPeerAPI  -- ^ Ping via PeerAPI
+  = -- | Tailscale-specific ping
+    PingTSMP
+  | -- | Standard ICMP ping
+    PingICMP
+  | -- | Ping via PeerAPI
+    PingPeerAPI
   deriving (Eq, Show, Generic)
 
 instance ToJSON PingType where
-  toJSON PingTSMP    = "TSMP"
-  toJSON PingICMP    = "ICMP"
+  toJSON PingTSMP = "TSMP"
+  toJSON PingICMP = "ICMP"
   toJSON PingPeerAPI = "PeerAPI"
 
 -- | Result of a ping
 data PingResult = PingResult
-  { pingIP              :: !Text
-  , pingNodeIP          :: !(Maybe Text)
-  , pingNodeName        :: !(Maybe Text)
-  , pingLatencySeconds  :: !(Maybe Double)
-  , pingEndpoint        :: !(Maybe Text)
-  , pingDERPRegionID    :: !(Maybe Int)
-  , pingDERPRegionCode  :: !(Maybe Text)
-  , pingPeerAPIPort     :: !(Maybe Int)
-  , pingIsLocalIP       :: !(Maybe Bool)
-  , pingErr             :: !(Maybe Text)
+  { pingIP :: !Text
+  , pingNodeIP :: !(Maybe Text)
+  , pingNodeName :: !(Maybe Text)
+  , pingLatencySeconds :: !(Maybe Double)
+  , pingEndpoint :: !(Maybe Text)
+  , pingDERPRegionID :: !(Maybe Int)
+  , pingDERPRegionCode :: !(Maybe Text)
+  , pingPeerAPIPort :: !(Maybe Int)
+  , pingIsLocalIP :: !(Maybe Bool)
+  , pingErr :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON PingResult where
   parseJSON = withObject "PingResult" $ \o ->
     PingResult
-      <$> o .:  "IP"
+      <$> o .: "IP"
       <*> o .:? "NodeIP"
       <*> o .:? "NodeName"
       <*> o .:? "LatencySeconds"
@@ -437,7 +442,7 @@ instance FromJSON WaitingFile where
 
 -- | A target for file transfer
 data FileTarget = FileTarget
-  { fileTargetNode       :: !Node
+  { fileTargetNode :: !Node
   , fileTargetPeerAPIURL :: !Text
   }
   deriving (Eq, Show, Generic)
@@ -454,8 +459,8 @@ instance FromJSON FileTarget where
 
 -- | Configuration for Tailscale Serve
 data ServeConfig = ServeConfig
-  { serveConfigTCP       :: !(Maybe (Map Int ServeConfigHandler))
-  , serveConfigWeb       :: !(Maybe (Map Text (Map Text ServeConfigHandler)))
+  { serveConfigTCP :: !(Maybe (Map Int ServeConfigHandler))
+  , serveConfigWeb :: !(Maybe (Map Text (Map Text ServeConfigHandler)))
   , serveConfigAllowFunnel :: !(Maybe (Map Text Bool))
   }
   deriving (Eq, Show, Generic)
@@ -468,18 +473,19 @@ instance FromJSON ServeConfig where
       <*> o .:? "AllowFunnel"
 
 instance ToJSON ServeConfig where
-  toJSON ServeConfig{..} = object
-    [ "TCP"         .= serveConfigTCP
-    , "Web"         .= serveConfigWeb
-    , "AllowFunnel" .= serveConfigAllowFunnel
-    ]
+  toJSON ServeConfig{..} =
+    object
+      [ "TCP" .= serveConfigTCP
+      , "Web" .= serveConfigWeb
+      , "AllowFunnel" .= serveConfigAllowFunnel
+      ]
 
 -- | Handler configuration for Tailscale Serve
 data ServeConfigHandler = ServeConfigHandler
-  { schProxy        :: !(Maybe Text)
-  , schPath         :: !(Maybe Text)
-  , schText         :: !(Maybe Text)
-  , schTCPForward   :: !(Maybe Text)
+  { schProxy :: !(Maybe Text)
+  , schPath :: !(Maybe Text)
+  , schText :: !(Maybe Text)
+  , schTCPForward :: !(Maybe Text)
   , schTerminateTLS :: !(Maybe Bool)
   }
   deriving (Eq, Show, Generic)
@@ -494,13 +500,14 @@ instance FromJSON ServeConfigHandler where
       <*> o .:? "TerminateTLS"
 
 instance ToJSON ServeConfigHandler where
-  toJSON ServeConfigHandler{..} = object
-    [ "Proxy"        .= schProxy
-    , "Path"         .= schPath
-    , "Text"         .= schText
-    , "TCPForward"   .= schTCPForward
-    , "TerminateTLS" .= schTerminateTLS
-    ]
+  toJSON ServeConfigHandler{..} =
+    object
+      [ "Proxy" .= schProxy
+      , "Path" .= schPath
+      , "Text" .= schText
+      , "TCPForward" .= schTCPForward
+      , "TerminateTLS" .= schTerminateTLS
+      ]
 
 --------------------------------------------------------------------------------
 -- Network Lock Types
@@ -508,20 +515,20 @@ instance ToJSON ServeConfigHandler where
 
 -- | Status of Tailscale Network Lock (tailnet key authority)
 data NetworkLockStatus = NetworkLockStatus
-  { nlsEnabled            :: !Bool
-  , nlsHead               :: !(Maybe Text)
-  , nlsPublicKey          :: !(Maybe Text)
-  , nlsNodeKey            :: !(Maybe Text)
-  , nlsNodeKeySigned      :: !(Maybe Bool)
-  , nlsFilteredPeers      :: !(Maybe [Text])
-  , nlsStateID            :: !(Maybe Int)
+  { nlsEnabled :: !Bool
+  , nlsHead :: !(Maybe Text)
+  , nlsPublicKey :: !(Maybe Text)
+  , nlsNodeKey :: !(Maybe Text)
+  , nlsNodeKeySigned :: !(Maybe Bool)
+  , nlsFilteredPeers :: !(Maybe [Text])
+  , nlsStateID :: !(Maybe Int)
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON NetworkLockStatus where
   parseJSON = withObject "NetworkLockStatus" $ \o ->
     NetworkLockStatus
-      <$> o .:  "Enabled"
+      <$> o .: "Enabled"
       <*> o .:? "Head"
       <*> o .:? "PublicKey"
       <*> o .:? "NodeKey"

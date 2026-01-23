@@ -1,44 +1,46 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- |
--- Module      : Tailscale.DERP.Client
--- Description : DERP client implementation
--- License     : BSD-3-Clause
---
--- This module provides a client for connecting to DERP servers and
--- relaying WireGuard packets through them.
-module Tailscale.DERP.Client
-  ( -- * Client
-    DERPClient (..)
-  , DERPConfig (..)
-  , DERPError (..)
+{- |
+Module      : Tailscale.DERP.Client
+Description : DERP client implementation
+License     : BSD-3-Clause
 
-    -- * Connection
-  , newDERPClient
-  , connectDERP
-  , closeDERP
-  , withDERP
+This module provides a client for connecting to DERP servers and
+relaying WireGuard packets through them.
+-}
+module Tailscale.DERP.Client (
+  -- * Client
+  DERPClient (..),
+  DERPConfig (..),
+  DERPError (..),
 
-    -- * Communication
-  , sendPacket
-  , recvPacket
-  , sendKeepAlive
-  , notePreferred
+  -- * Connection
+  newDERPClient,
+  connectDERP,
+  closeDERP,
+  withDERP,
 
-    -- * Server Info
-  , derpRegionURL
-  ) where
+  -- * Communication
+  sendPacket,
+  recvPacket,
+  tryRecvPacket,
+  sendKeepAlive,
+  notePreferred,
 
-import Control.Concurrent (forkIO, threadDelay, killThread, ThreadId)
+  -- * Server Info
+  derpRegionURL,
+) where
+
+import Control.Concurrent (ThreadId, forkIO, killThread, threadDelay)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM
-import Control.Exception (try, SomeException)
-import Control.Monad (when, void)
+import Control.Exception (SomeException, try)
+import Control.Monad (unless, void)
 import Data.Bits (shiftL, (.|.))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import Data.Foldable (forM_)
 import Data.IORef
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -60,26 +62,26 @@ data DERPError
 
 -- | Configuration for DERP client
 data DERPConfig = DERPConfig
-  { dcRegionID    :: !Int
-    -- ^ DERP region ID
-  , dcServerURL   :: !Text
-    -- ^ Full URL to DERP server (e.g., "https://derp1.tailscale.com")
-  , dcPrivateKey  :: !PrivateKey
-    -- ^ Our private key for authentication
+  { dcRegionID :: !Int
+  -- ^ DERP region ID
+  , dcServerURL :: !Text
+  -- ^ Full URL to DERP server (e.g., "https://derp1.tailscale.com")
+  , dcPrivateKey :: !PrivateKey
+  -- ^ Our private key for authentication
   , dcCanAckPings :: !Bool
-    -- ^ Whether we can acknowledge pings
+  -- ^ Whether we can acknowledge pings
   }
   deriving (Show)
 
 -- | DERP client state
 data DERPClient = DERPClient
-  { dcSocket      :: !(MVar Socket)
-  , dcServerKey   :: !(MVar ByteString)
-  , dcConfig      :: !DERPConfig
-  , dcPublicKey   :: !PublicKey
-  , dcRecvQueue   :: !(TQueue RecvPacket)
-  , dcClosed      :: !(IORef Bool)
-  , dcReadThread  :: !(MVar (Maybe ThreadId))
+  { dcSocket :: !(MVar Socket)
+  , dcServerKey :: !(MVar ByteString)
+  , dcConfig :: !DERPConfig
+  , dcPublicKey :: !PublicKey
+  , dcRecvQueue :: !(TQueue RecvPacket)
+  , dcClosed :: !(IORef Bool)
+  , dcReadThread :: !(MVar (Maybe ThreadId))
   }
 
 -- | Get the URL for a DERP region
@@ -94,15 +96,16 @@ newDERPClient config = do
   recvQueue <- newTQueueIO
   closed <- newIORef False
   readThread <- newMVar Nothing
-  pure DERPClient
-    { dcSocket = socket
-    , dcServerKey = serverKey
-    , dcConfig = config
-    , dcPublicKey = derivePublicKey (dcPrivateKey config)
-    , dcRecvQueue = recvQueue
-    , dcClosed = closed
-    , dcReadThread = readThread
-    }
+  pure
+    DERPClient
+      { dcSocket = socket
+      , dcServerKey = serverKey
+      , dcConfig = config
+      , dcPublicKey = derivePublicKey (dcPrivateKey config)
+      , dcRecvQueue = recvQueue
+      , dcClosed = closed
+      , dcReadThread = readThread
+      }
 
 -- | Connect to the DERP server
 connectDERP :: DERPClient -> IO (Either DERPError ())
@@ -115,22 +118,24 @@ connectDERP client = do
     -- Parse the URL and extract host/port
     let url = dcServerURL (dcConfig client)
         -- Extract hostname (simplified)
-        host = T.unpack $ T.drop 8 $ T.takeWhile (/= '/') $ T.drop 8 url  -- after "https://"
+        host = T.unpack $ T.drop 8 $ T.takeWhile (/= '/') $ T.drop 8 url -- after "https://"
         port = "443"
 
     -- Resolve and connect
-    addrInfos <- Socket.getAddrInfo
-      (Just Socket.defaultHints { Socket.addrSocketType = Socket.Stream })
-      (Just host)
-      (Just port)
+    addrInfos <-
+      Socket.getAddrInfo
+        (Just Socket.defaultHints{Socket.addrSocketType = Socket.Stream})
+        (Just host)
+        (Just port)
 
     case addrInfos of
       [] -> error "Could not resolve DERP server"
-      (addr:_) -> do
-        sock <- Socket.socket
-          (Socket.addrFamily addr)
-          (Socket.addrSocketType addr)
-          (Socket.addrProtocol addr)
+      (addr : _) -> do
+        sock <-
+          Socket.socket
+            (Socket.addrFamily addr)
+            (Socket.addrSocketType addr)
+            (Socket.addrProtocol addr)
         Socket.connect sock (Socket.addrAddress addr)
 
         -- Store socket
@@ -155,10 +160,10 @@ connectDERP client = do
 readerLoop :: DERPClient -> IO ()
 readerLoop client = do
   closed <- readIORef (dcClosed client)
-  when (not closed) $ do
+  unless closed $ do
     mSock <- tryReadMVar (dcSocket client)
     case mSock of
-      Nothing -> threadDelay 100000  -- 100ms
+      Nothing -> threadDelay 100000 -- 100ms
       Just sock -> do
         -- Read frame header (5 bytes: type + length)
         headerResult <- try $ SBS.recv sock 5
@@ -173,7 +178,7 @@ readerLoop client = do
                 payload <- SBS.recv sock frameLen
                 let fullFrame = header <> payload
                 case parseFrame fullFrame of
-                  Left _ -> pure ()  -- Skip bad frames
+                  Left _ -> pure () -- Skip bad frames
                   Right (frame, _) -> handleFrame client frame
 
         readerLoop client
@@ -183,25 +188,20 @@ handleFrame :: DERPClient -> Frame -> IO ()
 handleFrame client frame = case frame of
   FServerKey (ServerKey key) ->
     void $ tryPutMVar (dcServerKey client) key
-
   FRecvPacket pkt ->
     atomically $ writeTQueue (dcRecvQueue client) pkt
-
-  FPeerGone _ -> pure ()  -- Could track this
-  FPeerPresent _ -> pure ()  -- Could track this
-
-  FPing (Ping pingData) -> do
+  FPeerGone _ -> pure () -- Could track this
+  FPeerPresent _ -> pure () -- Could track this
+  FPing (Ping pdata) -> do
     -- Send pong back
     mSock <- tryReadMVar (dcSocket client)
     case mSock of
       Nothing -> pure ()
       Just sock -> do
-        let pongFrame = serializeFrame (FPong (Pong pingData))
+        let pongFrame = serializeFrame (FPong (Pong pdata))
         void $ SBS.send sock pongFrame
-
-  FHealth _ -> pure ()  -- Could log
-  FRestarting _ -> pure ()  -- Could handle reconnect
-
+  FHealth _ -> pure () -- Could log
+  FRestarting _ -> pure () -- Could handle reconnect
   _ -> pure ()
 
 -- | Close the DERP connection
@@ -211,15 +211,11 @@ closeDERP client = do
 
   -- Kill reader thread
   mTid <- readMVar (dcReadThread client)
-  case mTid of
-    Nothing -> pure ()
-    Just tid -> killThread tid
+  forM_ mTid killThread
 
   -- Close socket
   mSock <- tryTakeMVar (dcSocket client)
-  case mSock of
-    Nothing -> pure ()
-    Just sock -> Socket.close sock
+  forM_ mSock Socket.close
 
 -- | Run an action with a DERP client, ensuring cleanup
 withDERP :: DERPConfig -> (DERPClient -> IO a) -> IO (Either DERPError a)
@@ -299,4 +295,4 @@ getWord32BE bs offset =
       b1 = fromIntegral $ BS.index bs (offset + 1)
       b2 = fromIntegral $ BS.index bs (offset + 2)
       b3 = fromIntegral $ BS.index bs (offset + 3)
-  in (b0 `shiftL` 24) .|. (b1 `shiftL` 16) .|. (b2 `shiftL` 8) .|. b3
+   in (b0 `shiftL` 24) .|. (b1 `shiftL` 16) .|. (b2 `shiftL` 8) .|. b3

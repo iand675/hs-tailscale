@@ -1,41 +1,43 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- |
--- Module      : Tailscale.Control.Client
--- Description : Tailscale control plane client
--- License     : BSD-3-Clause
---
--- Client for communicating with the Tailscale control plane (or Headscale).
-module Tailscale.Control.Client
-  ( -- * Client
-    ControlClient (..)
-  , ControlError (..)
+{- |
+Module      : Tailscale.Control.Client
+Description : Tailscale control plane client
+License     : BSD-3-Clause
 
-    -- * Connection
-  , newControlClient
-  , closeControlClient
+Client for communicating with the Tailscale control plane (or Headscale).
+-}
+module Tailscale.Control.Client (
+  -- * Client
+  ControlClient (..),
+  ControlError (..),
 
-    -- * Operations
-  , register
-  , fetchNetworkMap
-  , streamNetworkMap
-  , updateEndpoints
+  -- * Connection
+  newControlClient,
+  closeControlClient,
 
-    -- * Utilities
-  , generateMachineKey
-  , generateNodeKey
-  ) where
+  -- * Operations
+  register,
+  fetchNetworkMap,
+  streamNetworkMap,
+  updateEndpoints,
 
-import Control.Concurrent (forkIO, threadDelay, ThreadId, killThread)
+  -- * Utilities
+  generateMachineKey,
+  generateNodeKey,
+) where
+
+import Control.Concurrent (ThreadId, forkIO, killThread, threadDelay)
 import Control.Concurrent.STM
-import Control.Exception (try, SomeException)
-import Control.Monad (when)
-import Data.Aeson (ToJSON, FromJSON, encode, eitherDecode)
+import Control.Exception (SomeException, try)
+import Control.Monad (unless)
+import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString.Lazy as LBS
+import Data.Foldable (forM_)
 import Data.IORef
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -45,7 +47,7 @@ import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status (statusCode)
 
 import Tailscale.Control.Protocol
-import Tailscale.WireGuard.Crypto (generatePrivateKey, derivePublicKey, PrivateKey, PublicKey(..))
+import Tailscale.WireGuard.Crypto (PrivateKey, PublicKey (..), derivePublicKey, generatePrivateKey)
 
 -- | Control client errors
 data ControlError
@@ -57,12 +59,12 @@ data ControlError
 
 -- | Control plane client
 data ControlClient = ControlClient
-  { ccConfig       :: !ControlConfig
-  , ccManager      :: !Manager
-  , ccNetworkMap   :: !(TVar (Maybe NetworkMap))
-  , ccMapCallback  :: !(TVar (Maybe (NetworkMap -> IO ())))
+  { ccConfig :: !ControlConfig
+  , ccManager :: !Manager
+  , ccNetworkMap :: !(TVar (Maybe NetworkMap))
+  , ccMapCallback :: !(TVar (Maybe (NetworkMap -> IO ())))
   , ccStreamThread :: !(IORef (Maybe ThreadId))
-  , ccClosed       :: !(IORef Bool)
+  , ccClosed :: !(IORef Bool)
   }
 
 -- | Create a new control client
@@ -73,23 +75,22 @@ newControlClient config = do
   mapCallback <- newTVarIO Nothing
   streamThread <- newIORef Nothing
   closed <- newIORef False
-  pure ControlClient
-    { ccConfig = config
-    , ccManager = manager
-    , ccNetworkMap = networkMap
-    , ccMapCallback = mapCallback
-    , ccStreamThread = streamThread
-    , ccClosed = closed
-    }
+  pure
+    ControlClient
+      { ccConfig = config
+      , ccManager = manager
+      , ccNetworkMap = networkMap
+      , ccMapCallback = mapCallback
+      , ccStreamThread = streamThread
+      , ccClosed = closed
+      }
 
 -- | Close the control client
 closeControlClient :: ControlClient -> IO ()
 closeControlClient client = do
   writeIORef (ccClosed client) True
   mThread <- readIORef (ccStreamThread client)
-  case mThread of
-    Nothing -> pure ()
-    Just tid -> killThread tid
+  forM_ mThread killThread
 
 -- | Generate a new machine key
 generateMachineKey :: IO MachineKey
@@ -106,31 +107,35 @@ generateNodeKey = do
   pure (privKey, NodeKey $ BA.convert pub)
 
 -- | Register this node with the control server
-register
-  :: ControlClient
-  -> Maybe Text       -- ^ Auth key (for pre-authenticated registration)
-  -> IO (Either ControlError RegisterResponse)
+register ::
+  ControlClient ->
+  -- | Auth key (for pre-authenticated registration)
+  Maybe Text ->
+  IO (Either ControlError RegisterResponse)
 register client mAuthKey = do
   let config = ccConfig client
       url = ccControlURL config <> "/machine/register"
 
       authInfo = case mAuthKey of
         Nothing -> Nothing
-        Just key -> Just AuthInfo
-          { aiProvider = "authkey"
-          , aiLoginName = Nothing
-          , aiAuthKey = Just key
-          }
+        Just key ->
+          Just
+            AuthInfo
+              { aiProvider = "authkey"
+              , aiLoginName = Nothing
+              , aiAuthKey = Just key
+              }
 
-      reqBody = RegisterRequest
-        { rrVersion = 1
-        , rrNodeKey = ccNodeKey config
-        , rrOldNodeKey = Nothing
-        , rrAuth = authInfo
-        , rrExpiry = Nothing
-        , rrHostinfo = Nothing
-        , rrFollowup = Nothing
-        }
+      reqBody =
+        RegisterRequest
+          { rrVersion = 1
+          , rrNodeKey = ccNodeKey config
+          , rrOldNodeKey = Nothing
+          , rrAuth = authInfo
+          , rrExpiry = Nothing
+          , rrHostinfo = Nothing
+          , rrFollowup = Nothing
+          }
 
   doRequest client url reqBody
 
@@ -140,15 +145,16 @@ fetchNetworkMap client = do
   let config = ccConfig client
       url = ccControlURL config <> "/machine/map"
 
-      reqBody = MapRequest
-        { mrVersion = 1
-        , mrCompress = ""
-        , mrKeepAlive = False
-        , mrNodeKey = ccNodeKey config
-        , mrEndpoints = []
-        , mrStream = False
-        , mrHostinfo = Nothing
-        }
+      reqBody =
+        MapRequest
+          { mrVersion = 1
+          , mrCompress = ""
+          , mrKeepAlive = False
+          , mrNodeKey = ccNodeKey config
+          , mrEndpoints = []
+          , mrStream = False
+          , mrHostinfo = Nothing
+          }
 
   result <- doRequest client url reqBody
   case result of
@@ -156,24 +162,26 @@ fetchNetworkMap client = do
     Right (resp :: MapResponse) ->
       case (mrspNode resp, mrspPeers resp, mrspDERPMap resp) of
         (Just self, Just peers, Just derpMap) -> do
-          let netMap = NetworkMap
-                { nmSelfNode = self
-                , nmPeers = peers
-                , nmDERPMap = derpMap
-                , nmDNSConfig = mrspDNSConfig resp
-                , nmPacketFilter = mrspPacketFilter resp
-                , nmCollectServices = False
-                , nmDomain = maybe "" id (mrspDomain resp)
-                }
+          let netMap =
+                NetworkMap
+                  { nmSelfNode = self
+                  , nmPeers = peers
+                  , nmDERPMap = derpMap
+                  , nmDNSConfig = mrspDNSConfig resp
+                  , nmPacketFilter = mrspPacketFilter resp
+                  , nmCollectServices = False
+                  , nmDomain = fromMaybe "" (mrspDomain resp)
+                  }
           atomically $ writeTVar (ccNetworkMap client) (Just netMap)
           pure $ Right netMap
         _ -> pure $ Left $ ControlProtocolError "Incomplete map response"
 
 -- | Stream network map updates
-streamNetworkMap
-  :: ControlClient
-  -> (NetworkMap -> IO ())  -- ^ Callback for map updates
-  -> IO (Either ControlError ())
+streamNetworkMap ::
+  ControlClient ->
+  -- | Callback for map updates
+  (NetworkMap -> IO ()) ->
+  IO (Either ControlError ())
 streamNetworkMap client callback = do
   atomically $ writeTVar (ccMapCallback client) (Just callback)
 
@@ -186,22 +194,20 @@ streamNetworkMap client callback = do
 streamLoop :: ControlClient -> IO ()
 streamLoop client = do
   closed <- readIORef (ccClosed client)
-  when (not closed) $ do
+  unless closed $ do
     -- Fetch map
     result <- fetchNetworkMap client
     case result of
       Left _ -> pure ()
       Right netMap -> do
-        mCallback <- atomically $ readTVar (ccMapCallback client)
+        mCallback <- readTVarIO (ccMapCallback client)
         case mCallback of
           Nothing -> pure ()
           Just cb -> cb netMap
 
     -- Wait and retry (simplified - real implementation uses long-polling)
-    threadDelay 30000000  -- 30 seconds
+    threadDelay 30000000 -- 30 seconds
     streamLoop client
-  where
-    threadDelay n = Control.Concurrent.threadDelay n
 
 -- | Update our endpoints with the control server
 updateEndpoints :: ControlClient -> [Text] -> IO (Either ControlError ())
@@ -209,15 +215,16 @@ updateEndpoints client endpoints = do
   let config = ccConfig client
       url = ccControlURL config <> "/machine/map"
 
-      reqBody = MapRequest
-        { mrVersion = 1
-        , mrCompress = ""
-        , mrKeepAlive = True
-        , mrNodeKey = ccNodeKey config
-        , mrEndpoints = endpoints
-        , mrStream = False
-        , mrHostinfo = Nothing
-        }
+      reqBody =
+        MapRequest
+          { mrVersion = 1
+          , mrCompress = ""
+          , mrKeepAlive = True
+          , mrNodeKey = ccNodeKey config
+          , mrEndpoints = endpoints
+          , mrStream = False
+          , mrHostinfo = Nothing
+          }
 
   result <- doRequest client url reqBody
   case result of
@@ -225,24 +232,24 @@ updateEndpoints client endpoints = do
     Right (_ :: MapResponse) -> pure $ Right ()
 
 -- | Make a request to the control server
-doRequest
-  :: (ToJSON req, FromJSON resp)
-  => ControlClient
-  -> Text
-  -> req
-  -> IO (Either ControlError resp)
+doRequest ::
+  (ToJSON req, FromJSON resp) =>
+  ControlClient ->
+  Text ->
+  req ->
+  IO (Either ControlError resp)
 doRequest client urlText reqBody = do
   result <- try $ do
     initReq <- parseRequest $ T.unpack urlText
-    let req = initReq
-          { method = "POST"
-          , requestBody = RequestBodyLBS $ encode reqBody
-          , requestHeaders =
-              (hContentType, "application/json") :
-              requestHeaders initReq
-          }
-    response <- httpLbs req (ccManager client)
-    pure response
+    let req =
+          initReq
+            { method = "POST"
+            , requestBody = RequestBodyLBS $ encode reqBody
+            , requestHeaders =
+                (hContentType, "application/json")
+                  : requestHeaders initReq
+            }
+    httpLbs req (ccManager client)
 
   case result of
     Left (e :: SomeException) ->
@@ -254,5 +261,8 @@ doRequest client urlText reqBody = do
         then case eitherDecode body of
           Left e -> pure $ Left $ ControlProtocolError $ T.pack e
           Right r -> pure $ Right r
-        else pure $ Left $ ControlConnectionError $
-          "HTTP " <> T.pack (show status) <> ": " <> TE.decodeUtf8 (LBS.toStrict body)
+        else
+          pure $
+            Left $
+              ControlConnectionError $
+                "HTTP " <> T.pack (show status) <> ": " <> TE.decodeUtf8 (LBS.toStrict body)

@@ -2,49 +2,49 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- |
--- Module      : Tailscale.Control.Protocol
--- Description : Tailscale control plane protocol
--- License     : BSD-3-Clause
---
--- This module implements communication with the Tailscale control plane
--- (coordination server). The control server:
---
--- * Authenticates nodes
--- * Distributes network maps (list of peers and their IPs)
--- * Coordinates key exchange
--- * Manages ACLs and policies
---
--- By default, this communicates with controlplane.tailscale.com, but
--- can be configured to use a self-hosted Headscale server.
-module Tailscale.Control.Protocol
-  ( -- * Types
-    ControlConfig (..)
-  , NodeKey (..)
-  , MachineKey (..)
-  , NetworkMap (..)
-  , PeerInfo (..)
-  , DERPMap (..)
-  , DERPRegion (..)
-  , DERPNode (..)
+{- |
+Module      : Tailscale.Control.Protocol
+Description : Tailscale control plane protocol
+License     : BSD-3-Clause
 
-    -- * Defaults
-  , defaultControlConfig
-  , defaultControlURL
+This module implements communication with the Tailscale control plane
+(coordination server). The control server:
 
-    -- * Registration
-  , RegisterRequest (..)
-  , RegisterResponse (..)
-  , AuthInfo (..)
+* Authenticates nodes
+* Distributes network maps (list of peers and their IPs)
+* Coordinates key exchange
+* Manages ACLs and policies
 
-    -- * Map Requests
-  , MapRequest (..)
-  , MapResponse (..)
-  ) where
+By default, this communicates with controlplane.tailscale.com, but
+can be configured to use a self-hosted Headscale server.
+-}
+module Tailscale.Control.Protocol (
+  -- * Types
+  ControlConfig (..),
+  NodeKey (..),
+  MachineKey (..),
+  NetworkMap (..),
+  PeerInfo (..),
+  DERPMap (..),
+  DERPRegion (..),
+  DERPNode (..),
+
+  -- * Defaults
+  defaultControlConfig,
+  defaultControlURL,
+
+  -- * Registration
+  RegisterRequest (..),
+  RegisterResponse (..),
+  AuthInfo (..),
+
+  -- * Map Requests
+  MapRequest (..),
+  MapResponse (..),
+) where
 
 import Data.Aeson
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -61,25 +61,26 @@ defaultControlURL = "https://controlplane.tailscale.com"
 
 -- | Control plane configuration
 data ControlConfig = ControlConfig
-  { ccControlURL   :: !Text
-    -- ^ URL of the control server
-  , ccMachineKey   :: !MachineKey
-    -- ^ This machine's key (persistent across reboots)
-  , ccNodeKey      :: !NodeKey
-    -- ^ This node's key (may change on re-auth)
+  { ccControlURL :: !Text
+  -- ^ URL of the control server
+  , ccMachineKey :: !MachineKey
+  -- ^ This machine's key (persistent across reboots)
+  , ccNodeKey :: !NodeKey
+  -- ^ This node's key (may change on re-auth)
   }
   deriving (Eq, Show, Generic)
 
 -- | Default control configuration
 defaultControlConfig :: MachineKey -> NodeKey -> ControlConfig
-defaultControlConfig mk nk = ControlConfig
-  { ccControlURL = defaultControlURL
-  , ccMachineKey = mk
-  , ccNodeKey = nk
-  }
+defaultControlConfig mk nk =
+  ControlConfig
+    { ccControlURL = defaultControlURL
+    , ccMachineKey = mk
+    , ccNodeKey = nk
+    }
 
 -- | Node key (WireGuard public key for this node)
-newtype NodeKey = NodeKey { unNodeKey :: ByteString }
+newtype NodeKey = NodeKey {unNodeKey :: ByteString}
   deriving (Eq, Show)
 
 instance ToJSON NodeKey where
@@ -94,7 +95,7 @@ instance FromJSON NodeKey where
         Right k -> pure $ NodeKey k
 
 -- | Machine key (stable identifier for this machine)
-newtype MachineKey = MachineKey { unMachineKey :: ByteString }
+newtype MachineKey = MachineKey {unMachineKey :: ByteString}
   deriving (Eq, Show)
 
 instance ToJSON MachineKey where
@@ -110,20 +111,20 @@ instance FromJSON MachineKey where
 
 -- | Network map (list of all peers and their configuration)
 data NetworkMap = NetworkMap
-  { nmSelfNode     :: !PeerInfo
-    -- ^ Information about this node
-  , nmPeers        :: ![PeerInfo]
-    -- ^ List of peer nodes
-  , nmDERPMap      :: !DERPMap
-    -- ^ DERP server configuration
-  , nmDNSConfig    :: !(Maybe DNSConfig)
-    -- ^ DNS configuration
+  { nmSelfNode :: !PeerInfo
+  -- ^ Information about this node
+  , nmPeers :: ![PeerInfo]
+  -- ^ List of peer nodes
+  , nmDERPMap :: !DERPMap
+  -- ^ DERP server configuration
+  , nmDNSConfig :: !(Maybe DNSConfig)
+  -- ^ DNS configuration
   , nmPacketFilter :: !(Maybe [FilterRule])
-    -- ^ ACL filter rules
+  -- ^ ACL filter rules
   , nmCollectServices :: !Bool
-    -- ^ Whether to collect service info
-  , nmDomain       :: !Text
-    -- ^ Tailnet domain (e.g., "tail-scale.ts.net")
+  -- ^ Whether to collect service info
+  , nmDomain :: !Text
+  -- ^ Tailnet domain (e.g., "tail-scale.ts.net")
   }
   deriving (Eq, Show, Generic)
 
@@ -140,38 +141,38 @@ instance FromJSON NetworkMap where
 
 -- | Information about a peer
 data PeerInfo = PeerInfo
-  { piID           :: !Int
-    -- ^ Node ID
-  , piStableID     :: !Text
-    -- ^ Stable node ID
-  , piName         :: !Text
-    -- ^ Node name
-  , piUser         :: !Int
-    -- ^ User ID
-  , piKey          :: !NodeKey
-    -- ^ WireGuard public key
-  , piAddresses    :: ![Text]
-    -- ^ Tailscale IP addresses
-  , piAllowedIPs   :: ![Text]
-    -- ^ Allowed IP ranges
-  , piEndpoints    :: !(Maybe [Text])
-    -- ^ Direct endpoints (IP:port)
-  , piDERP         :: !(Maybe Text)
-    -- ^ Preferred DERP region
-  , piHostinfo     :: !(Maybe Value)
-    -- ^ Host information
-  , piCreated      :: !(Maybe UTCTime)
-    -- ^ Creation time
-  , piLastSeen     :: !(Maybe UTCTime)
-    -- ^ Last seen time
-  , piOnline       :: !(Maybe Bool)
-    -- ^ Whether the peer is online
-  , piKeepAlive    :: !Bool
-    -- ^ Whether to send keepalives
+  { piID :: !Int
+  -- ^ Node ID
+  , piStableID :: !Text
+  -- ^ Stable node ID
+  , piName :: !Text
+  -- ^ Node name
+  , piUser :: !Int
+  -- ^ User ID
+  , piKey :: !NodeKey
+  -- ^ WireGuard public key
+  , piAddresses :: ![Text]
+  -- ^ Tailscale IP addresses
+  , piAllowedIPs :: ![Text]
+  -- ^ Allowed IP ranges
+  , piEndpoints :: !(Maybe [Text])
+  -- ^ Direct endpoints (IP:port)
+  , piDERP :: !(Maybe Text)
+  -- ^ Preferred DERP region
+  , piHostinfo :: !(Maybe Value)
+  -- ^ Host information
+  , piCreated :: !(Maybe UTCTime)
+  -- ^ Creation time
+  , piLastSeen :: !(Maybe UTCTime)
+  -- ^ Last seen time
+  , piOnline :: !(Maybe Bool)
+  -- ^ Whether the peer is online
+  , piKeepAlive :: !Bool
+  -- ^ Whether to send keepalives
   , piMachineAuthorized :: !Bool
-    -- ^ Whether the machine is authorized
-  , piTags         :: !(Maybe [Text])
-    -- ^ ACL tags
+  -- ^ Whether the machine is authorized
+  , piTags :: !(Maybe [Text])
+  -- ^ ACL tags
   }
   deriving (Eq, Show, Generic)
 
@@ -197,10 +198,10 @@ instance FromJSON PeerInfo where
 
 -- | DERP map (relay server configuration)
 data DERPMap = DERPMap
-  { dmRegions     :: !(Map Int DERPRegion)
-    -- ^ DERP regions by ID
+  { dmRegions :: !(Map Int DERPRegion)
+  -- ^ DERP regions by ID
   , dmOmitDefaultRegions :: !Bool
-    -- ^ Whether to omit default Tailscale regions
+  -- ^ Whether to omit default Tailscale regions
   }
   deriving (Eq, Show, Generic)
 
@@ -212,11 +213,11 @@ instance FromJSON DERPMap where
 
 -- | DERP region
 data DERPRegion = DERPRegion
-  { drRegionID    :: !Int
-  , drRegionCode  :: !Text
-  , drRegionName  :: !Text
-  , drNodes       :: ![DERPNode]
-  , drAvoid       :: !Bool
+  { drRegionID :: !Int
+  , drRegionCode :: !Text
+  , drRegionName :: !Text
+  , drNodes :: ![DERPNode]
+  , drAvoid :: !Bool
   }
   deriving (Eq, Show, Generic)
 
@@ -231,14 +232,14 @@ instance FromJSON DERPRegion where
 
 -- | DERP node (individual server)
 data DERPNode = DERPNode
-  { dnName        :: !Text
-  , dnRegionID    :: !Int
-  , dnHostName    :: !Text
-  , dnIPv4        :: !(Maybe Text)
-  , dnIPv6        :: !(Maybe Text)
-  , dnSTUNPort    :: !Word16
-  , dnSTUNOnly    :: !Bool
-  , dnDERPPort    :: !Word16
+  { dnName :: !Text
+  , dnRegionID :: !Int
+  , dnHostName :: !Text
+  , dnIPv4 :: !(Maybe Text)
+  , dnIPv6 :: !(Maybe Text)
+  , dnSTUNPort :: !Word16
+  , dnSTUNOnly :: !Bool
+  , dnDERPPort :: !Word16
   }
   deriving (Eq, Show, Generic)
 
@@ -256,10 +257,10 @@ instance FromJSON DERPNode where
 
 -- | DNS configuration from control server
 data DNSConfig = DNSConfig
-  { dnsResolvers    :: ![Text]
-  , dnsDomains      :: ![Text]
-  , dnsRoutes       :: !(Map Text [Text])
-  , dnsProxied      :: !Bool
+  { dnsResolvers :: ![Text]
+  , dnsDomains :: ![Text]
+  , dnsRoutes :: !(Map Text [Text])
+  , dnsProxied :: !Bool
   }
   deriving (Eq, Show, Generic)
 
@@ -273,7 +274,7 @@ instance FromJSON DNSConfig where
 
 -- | ACL filter rule
 data FilterRule = FilterRule
-  { frSrcIPs   :: ![Text]
+  { frSrcIPs :: ![Text]
   , frDstPorts :: ![Text]
   }
   deriving (Eq, Show, Generic)
@@ -290,50 +291,52 @@ instance FromJSON FilterRule where
 
 -- | Request to register with control server
 data RegisterRequest = RegisterRequest
-  { rrVersion     :: !Int
-  , rrNodeKey     :: !NodeKey
-  , rrOldNodeKey  :: !(Maybe NodeKey)
-  , rrAuth        :: !(Maybe AuthInfo)
-  , rrExpiry      :: !(Maybe UTCTime)
-  , rrHostinfo    :: !(Maybe Value)
-  , rrFollowup    :: !(Maybe Text)
+  { rrVersion :: !Int
+  , rrNodeKey :: !NodeKey
+  , rrOldNodeKey :: !(Maybe NodeKey)
+  , rrAuth :: !(Maybe AuthInfo)
+  , rrExpiry :: !(Maybe UTCTime)
+  , rrHostinfo :: !(Maybe Value)
+  , rrFollowup :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
 instance ToJSON RegisterRequest where
-  toJSON RegisterRequest{..} = object
-    [ "Version" .= rrVersion
-    , "NodeKey" .= rrNodeKey
-    , "OldNodeKey" .= rrOldNodeKey
-    , "Auth" .= rrAuth
-    , "Expiry" .= rrExpiry
-    , "Hostinfo" .= rrHostinfo
-    , "Followup" .= rrFollowup
-    ]
+  toJSON RegisterRequest{..} =
+    object
+      [ "Version" .= rrVersion
+      , "NodeKey" .= rrNodeKey
+      , "OldNodeKey" .= rrOldNodeKey
+      , "Auth" .= rrAuth
+      , "Expiry" .= rrExpiry
+      , "Hostinfo" .= rrHostinfo
+      , "Followup" .= rrFollowup
+      ]
 
 -- | Authentication information
 data AuthInfo = AuthInfo
-  { aiProvider  :: !Text
+  { aiProvider :: !Text
   , aiLoginName :: !(Maybe Text)
-  , aiAuthKey   :: !(Maybe Text)
+  , aiAuthKey :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
 instance ToJSON AuthInfo where
-  toJSON AuthInfo{..} = object
-    [ "Provider" .= aiProvider
-    , "LoginName" .= aiLoginName
-    , "AuthKey" .= aiAuthKey
-    ]
+  toJSON AuthInfo{..} =
+    object
+      [ "Provider" .= aiProvider
+      , "LoginName" .= aiLoginName
+      , "AuthKey" .= aiAuthKey
+      ]
 
 -- | Response from registration
 data RegisterResponse = RegisterResponse
-  { rrspUser        :: !(Maybe UserInfo)
-  , rrspLogin       :: !(Maybe LoginInfo)
+  { rrspUser :: !(Maybe UserInfo)
+  , rrspLogin :: !(Maybe LoginInfo)
   , rrspNodeKeyExpired :: !Bool
   , rrspMachineAuthorized :: !Bool
-  , rrspAuthURL     :: !(Maybe Text)
-  , rrspError       :: !(Maybe Text)
+  , rrspAuthURL :: !(Maybe Text)
+  , rrspError :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
@@ -348,8 +351,8 @@ instance FromJSON RegisterResponse where
       <*> o .:? "Error"
 
 data UserInfo = UserInfo
-  { uiID          :: !Int
-  , uiLoginName   :: !Text
+  { uiID :: !Int
+  , uiLoginName :: !Text
   , uiDisplayName :: !Text
   }
   deriving (Eq, Show, Generic)
@@ -362,8 +365,8 @@ instance FromJSON UserInfo where
       <*> o .: "DisplayName"
 
 data LoginInfo = LoginInfo
-  { liID        :: !Int
-  , liProvider  :: !Text
+  { liID :: !Int
+  , liProvider :: !Text
   , liLoginName :: !Text
   }
   deriving (Eq, Show, Generic)
@@ -381,38 +384,40 @@ instance FromJSON LoginInfo where
 
 -- | Request for network map
 data MapRequest = MapRequest
-  { mrVersion     :: !Int
-  , mrCompress    :: !Text  -- ^ "zstd" or ""
-  , mrKeepAlive   :: !Bool
-  , mrNodeKey     :: !NodeKey
-  , mrEndpoints   :: ![Text]
-  , mrStream      :: !Bool
-  , mrHostinfo    :: !(Maybe Value)
+  { mrVersion :: !Int
+  , mrCompress :: !Text
+  -- ^ "zstd" or ""
+  , mrKeepAlive :: !Bool
+  , mrNodeKey :: !NodeKey
+  , mrEndpoints :: ![Text]
+  , mrStream :: !Bool
+  , mrHostinfo :: !(Maybe Value)
   }
   deriving (Eq, Show, Generic)
 
 instance ToJSON MapRequest where
-  toJSON MapRequest{..} = object
-    [ "Version" .= mrVersion
-    , "Compress" .= mrCompress
-    , "KeepAlive" .= mrKeepAlive
-    , "NodeKey" .= mrNodeKey
-    , "Endpoints" .= mrEndpoints
-    , "Stream" .= mrStream
-    , "Hostinfo" .= mrHostinfo
-    ]
+  toJSON MapRequest{..} =
+    object
+      [ "Version" .= mrVersion
+      , "Compress" .= mrCompress
+      , "KeepAlive" .= mrKeepAlive
+      , "NodeKey" .= mrNodeKey
+      , "Endpoints" .= mrEndpoints
+      , "Stream" .= mrStream
+      , "Hostinfo" .= mrHostinfo
+      ]
 
 -- | Response with network map
 data MapResponse = MapResponse
-  { mrspNode            :: !(Maybe PeerInfo)
-  , mrspPeers           :: !(Maybe [PeerInfo])
-  , mrspDNSConfig       :: !(Maybe DNSConfig)
-  , mrspDERPMap         :: !(Maybe DERPMap)
-  , mrspDomain          :: !(Maybe Text)
-  , mrspPacketFilter    :: !(Maybe [FilterRule])
-  , mrspUserProfiles    :: !(Maybe (Map Int UserInfo))
-  , mrspHealth          :: !(Maybe [Text])
-  , mrspControlTime     :: !(Maybe UTCTime)
+  { mrspNode :: !(Maybe PeerInfo)
+  , mrspPeers :: !(Maybe [PeerInfo])
+  , mrspDNSConfig :: !(Maybe DNSConfig)
+  , mrspDERPMap :: !(Maybe DERPMap)
+  , mrspDomain :: !(Maybe Text)
+  , mrspPacketFilter :: !(Maybe [FilterRule])
+  , mrspUserProfiles :: !(Maybe (Map Int UserInfo))
+  , mrspHealth :: !(Maybe [Text])
+  , mrspControlTime :: !(Maybe UTCTime)
   }
   deriving (Eq, Show, Generic)
 

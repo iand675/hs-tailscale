@@ -2,55 +2,56 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- |
--- Module      : Tailscale.Types
--- Description : Core types for the Tailscale API
--- License     : BSD-3-Clause
---
--- This module contains all the data types used by the Tailscale API client.
--- It is a direct port of the types defined in the Tailscale Go SDK.
-module Tailscale.Types
-  ( -- * Error Types
-    TailscaleError (..)
-  , ErrResponse (..)
+{- |
+Module      : Tailscale.Types
+Description : Core types for the Tailscale API
+License     : BSD-3-Clause
 
-    -- * Device Types
-  , Device (..)
-  , ClientConnectivity (..)
-  , DerpRegion (..)
-  , DevicePostureIdentity (..)
-  , DeviceFieldsOpts (..)
-  , deviceAllFields
-  , deviceDefaultFields
+This module contains all the data types used by the Tailscale API client.
+It is a direct port of the types defined in the Tailscale Go SDK.
+-}
+module Tailscale.Types (
+  -- * Error Types
+  TailscaleError (..),
+  ErrResponse (..),
 
-    -- * DNS Types
-  , DNSConfig (..)
-  , DNSNameServers (..)
-  , DNSNameServersPostResponse (..)
-  , DNSSearchPaths (..)
-  , DNSPreferences (..)
+  -- * Device Types
+  Device (..),
+  ClientConnectivity (..),
+  DerpRegion (..),
+  DevicePostureIdentity (..),
+  DeviceFieldsOpts (..),
+  deviceAllFields,
+  deviceDefaultFields,
 
-    -- * Key Types
-  , Key (..)
-  , KeyCapabilities (..)
-  , KeyDeviceCapabilities (..)
-  , KeyDeviceCreateCapabilities (..)
+  -- * DNS Types
+  DNSConfig (..),
+  DNSNameServers (..),
+  DNSNameServersPostResponse (..),
+  DNSSearchPaths (..),
+  DNSPreferences (..),
 
-    -- * ACL Types
-  , ACL (..)
-  , ACLDetails (..)
-  , ACLRow (..)
-  , ACLTest (..)
-  , NodeAttrGrant (..)
-  , ACLHuJSON (..)
-  , ACLTestError (..)
-  , ACLTestFailureSummary (..)
-  , ACLPreview (..)
-  , UserRuleMatch (..)
+  -- * Key Types
+  Key (..),
+  KeyCapabilities (..),
+  KeyDeviceCapabilities (..),
+  KeyDeviceCreateCapabilities (..),
 
-    -- * Routes Types
-  , Routes (..)
-  ) where
+  -- * ACL Types
+  ACL (..),
+  ACLDetails (..),
+  ACLRow (..),
+  ACLTest (..),
+  NodeAttrGrant (..),
+  ACLHuJSON (..),
+  ACLTestError (..),
+  ACLTestFailureSummary (..),
+  ACLPreview (..),
+  UserRuleMatch (..),
+
+  -- * Routes Types
+  Routes (..),
+) where
 
 import Data.Aeson hiding (Key)
 import Data.Map.Strict (Map)
@@ -64,7 +65,7 @@ import GHC.Generics (Generic)
 
 -- | Error response from the Tailscale API
 data ErrResponse = ErrResponse
-  { errStatus  :: !Int
+  { errStatus :: !Int
   , errMessage :: !Text
   }
   deriving (Eq, Show, Generic)
@@ -76,10 +77,11 @@ instance FromJSON ErrResponse where
       <*> o .: "message"
 
 instance ToJSON ErrResponse where
-  toJSON ErrResponse{..} = object
-    [ "status" .= errStatus
-    , "message" .= errMessage
-    ]
+  toJSON ErrResponse{..} =
+    object
+      [ "status" .= errStatus
+      , "message" .= errMessage
+      ]
 
 -- | Errors that can occur when using the Tailscale client
 data TailscaleError
@@ -95,43 +97,43 @@ data TailscaleError
 
 -- | Represents a device (node) in a Tailscale network
 data Device = Device
-  { deviceAddresses          :: ![Text]
-  , deviceId                 :: !Text
-  , deviceNodeId             :: !Text
-  , deviceUser               :: !Text
-  , deviceName               :: !Text
-  , deviceHostname           :: !Text
-  , deviceClientVersion      :: !(Maybe Text)
-  , deviceUpdateAvailable    :: !(Maybe Bool)
-  , deviceOs                 :: !(Maybe Text)
-  , deviceCreated            :: !(Maybe UTCTime)
-  , deviceLastSeen           :: !(Maybe UTCTime)
-  , deviceKeyExpiryDisabled  :: !(Maybe Bool)
-  , deviceExpires            :: !(Maybe UTCTime)
-  , deviceAuthorized         :: !(Maybe Bool)
-  , deviceIsExternal         :: !(Maybe Bool)
-  , deviceMachineKey         :: !(Maybe Text)
-  , deviceNodeKey            :: !(Maybe Text)
+  { deviceAddresses :: ![Text]
+  , deviceId :: !Text
+  , deviceNodeId :: !Text
+  , deviceUser :: !Text
+  , deviceName :: !Text
+  , deviceHostname :: !Text
+  , deviceClientVersion :: !(Maybe Text)
+  , deviceUpdateAvailable :: !(Maybe Bool)
+  , deviceOs :: !(Maybe Text)
+  , deviceCreated :: !(Maybe UTCTime)
+  , deviceLastSeen :: !(Maybe UTCTime)
+  , deviceKeyExpiryDisabled :: !(Maybe Bool)
+  , deviceExpires :: !(Maybe UTCTime)
+  , deviceAuthorized :: !(Maybe Bool)
+  , deviceIsExternal :: !(Maybe Bool)
+  , deviceMachineKey :: !(Maybe Text)
+  , deviceNodeKey :: !(Maybe Text)
   , deviceBlocksIncomingConnections :: !(Maybe Bool)
-  , deviceEnabledRoutes      :: !(Maybe [Text])
-  , deviceAdvertisedRoutes   :: !(Maybe [Text])
+  , deviceEnabledRoutes :: !(Maybe [Text])
+  , deviceAdvertisedRoutes :: !(Maybe [Text])
   , deviceClientConnectivity :: !(Maybe ClientConnectivity)
-  , deviceTags               :: !(Maybe [Text])
-  , devicePostureIdentity    :: !(Maybe DevicePostureIdentity)
-  , deviceTailnetLockKey     :: !(Maybe Text)
-  , deviceTailnetLockError   :: !(Maybe Text)
+  , deviceTags :: !(Maybe [Text])
+  , devicePostureIdentity :: !(Maybe DevicePostureIdentity)
+  , deviceTailnetLockKey :: !(Maybe Text)
+  , deviceTailnetLockError :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON Device where
   parseJSON = withObject "Device" $ \o ->
     Device
-      <$> o .:  "addresses"
-      <*> o .:  "id"
-      <*> o .:  "nodeId"
-      <*> o .:  "user"
-      <*> o .:  "name"
-      <*> o .:  "hostname"
+      <$> o .: "addresses"
+      <*> o .: "id"
+      <*> o .: "nodeId"
+      <*> o .: "user"
+      <*> o .: "name"
+      <*> o .: "hostname"
       <*> o .:? "clientVersion"
       <*> o .:? "updateAvailable"
       <*> o .:? "os"
@@ -153,66 +155,68 @@ instance FromJSON Device where
       <*> o .:? "tailnetLockError"
 
 instance ToJSON Device where
-  toJSON Device{..} = object
-    [ "addresses"                  .= deviceAddresses
-    , "id"                         .= deviceId
-    , "nodeId"                     .= deviceNodeId
-    , "user"                       .= deviceUser
-    , "name"                       .= deviceName
-    , "hostname"                   .= deviceHostname
-    , "clientVersion"              .= deviceClientVersion
-    , "updateAvailable"            .= deviceUpdateAvailable
-    , "os"                         .= deviceOs
-    , "created"                    .= deviceCreated
-    , "lastSeen"                   .= deviceLastSeen
-    , "keyExpiryDisabled"          .= deviceKeyExpiryDisabled
-    , "expires"                    .= deviceExpires
-    , "authorized"                 .= deviceAuthorized
-    , "isExternal"                 .= deviceIsExternal
-    , "machineKey"                 .= deviceMachineKey
-    , "nodeKey"                    .= deviceNodeKey
-    , "blocksIncomingConnections"  .= deviceBlocksIncomingConnections
-    , "enabledRoutes"              .= deviceEnabledRoutes
-    , "advertisedRoutes"           .= deviceAdvertisedRoutes
-    , "clientConnectivity"         .= deviceClientConnectivity
-    , "tags"                       .= deviceTags
-    , "postureIdentity"            .= devicePostureIdentity
-    , "tailnetLockKey"             .= deviceTailnetLockKey
-    , "tailnetLockError"           .= deviceTailnetLockError
-    ]
+  toJSON Device{..} =
+    object
+      [ "addresses" .= deviceAddresses
+      , "id" .= deviceId
+      , "nodeId" .= deviceNodeId
+      , "user" .= deviceUser
+      , "name" .= deviceName
+      , "hostname" .= deviceHostname
+      , "clientVersion" .= deviceClientVersion
+      , "updateAvailable" .= deviceUpdateAvailable
+      , "os" .= deviceOs
+      , "created" .= deviceCreated
+      , "lastSeen" .= deviceLastSeen
+      , "keyExpiryDisabled" .= deviceKeyExpiryDisabled
+      , "expires" .= deviceExpires
+      , "authorized" .= deviceAuthorized
+      , "isExternal" .= deviceIsExternal
+      , "machineKey" .= deviceMachineKey
+      , "nodeKey" .= deviceNodeKey
+      , "blocksIncomingConnections" .= deviceBlocksIncomingConnections
+      , "enabledRoutes" .= deviceEnabledRoutes
+      , "advertisedRoutes" .= deviceAdvertisedRoutes
+      , "clientConnectivity" .= deviceClientConnectivity
+      , "tags" .= deviceTags
+      , "postureIdentity" .= devicePostureIdentity
+      , "tailnetLockKey" .= deviceTailnetLockKey
+      , "tailnetLockError" .= deviceTailnetLockError
+      ]
 
 -- | Client connectivity information for a device
 data ClientConnectivity = ClientConnectivity
-  { ccEndpoints             :: ![Text]
-  , ccDerp                  :: !Text
+  { ccEndpoints :: ![Text]
+  , ccDerp :: !Text
   , ccMappingVariesByDestIP :: !Bool
-  , ccLatency               :: !(Map Text DerpRegion)
-  , ccClientSupports        :: !(Maybe (Map Text Bool))
+  , ccLatency :: !(Map Text DerpRegion)
+  , ccClientSupports :: !(Maybe (Map Text Bool))
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON ClientConnectivity where
   parseJSON = withObject "ClientConnectivity" $ \o ->
     ClientConnectivity
-      <$> o .:  "endpoints"
-      <*> o .:  "derp"
-      <*> o .:  "mappingVariesByDestIP"
-      <*> o .:  "latency"
+      <$> o .: "endpoints"
+      <*> o .: "derp"
+      <*> o .: "mappingVariesByDestIP"
+      <*> o .: "latency"
       <*> o .:? "clientSupports"
 
 instance ToJSON ClientConnectivity where
-  toJSON ClientConnectivity{..} = object
-    [ "endpoints"             .= ccEndpoints
-    , "derp"                  .= ccDerp
-    , "mappingVariesByDestIP" .= ccMappingVariesByDestIP
-    , "latency"               .= ccLatency
-    , "clientSupports"        .= ccClientSupports
-    ]
+  toJSON ClientConnectivity{..} =
+    object
+      [ "endpoints" .= ccEndpoints
+      , "derp" .= ccDerp
+      , "mappingVariesByDestIP" .= ccMappingVariesByDestIP
+      , "latency" .= ccLatency
+      , "clientSupports" .= ccClientSupports
+      ]
 
 -- | DERP region latency information
 data DerpRegion = DerpRegion
-  { drPreferred       :: !Bool
-  , drLatencyMs       :: !Double
+  { drPreferred :: !Bool
+  , drLatencyMs :: !Double
   }
   deriving (Eq, Show, Generic)
 
@@ -223,14 +227,15 @@ instance FromJSON DerpRegion where
       <*> o .: "latencyMs"
 
 instance ToJSON DerpRegion where
-  toJSON DerpRegion{..} = object
-    [ "preferred" .= drPreferred
-    , "latencyMs" .= drLatencyMs
-    ]
+  toJSON DerpRegion{..} =
+    object
+      [ "preferred" .= drPreferred
+      , "latencyMs" .= drLatencyMs
+      ]
 
 -- | Device posture identity information
 data DevicePostureIdentity = DevicePostureIdentity
-  { dpiDisabled      :: !Bool
+  { dpiDisabled :: !Bool
   , dpiSerialNumbers :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
@@ -238,17 +243,18 @@ data DevicePostureIdentity = DevicePostureIdentity
 instance FromJSON DevicePostureIdentity where
   parseJSON = withObject "DevicePostureIdentity" $ \o ->
     DevicePostureIdentity
-      <$> o .:  "disabled"
+      <$> o .: "disabled"
       <*> o .:? "serialNumbers"
 
 instance ToJSON DevicePostureIdentity where
-  toJSON DevicePostureIdentity{..} = object
-    [ "disabled"      .= dpiDisabled
-    , "serialNumbers" .= dpiSerialNumbers
-    ]
+  toJSON DevicePostureIdentity{..} =
+    object
+      [ "disabled" .= dpiDisabled
+      , "serialNumbers" .= dpiSerialNumbers
+      ]
 
 -- | Options for which fields to include when fetching devices
-newtype DeviceFieldsOpts = DeviceFieldsOpts { unDeviceFieldsOpts :: Text }
+newtype DeviceFieldsOpts = DeviceFieldsOpts {unDeviceFieldsOpts :: Text}
   deriving (Eq, Show)
 
 -- | Include all device fields in the response
@@ -265,12 +271,12 @@ deviceDefaultFields = DeviceFieldsOpts "default"
 
 -- | Full DNS configuration for a tailnet
 data DNSConfig = DNSConfig
-  { dnsResolvers         :: ![Text]
+  { dnsResolvers :: ![Text]
   , dnsFallbackResolvers :: ![Text]
-  , dnsDomains           :: ![Text]
-  , dnsRoutes            :: !(Map Text [Text])
-  , dnsMagicDNS          :: !Bool
-  , dnsMagicDNSSuffix    :: !Text
+  , dnsDomains :: ![Text]
+  , dnsRoutes :: !(Map Text [Text])
+  , dnsMagicDNS :: !Bool
+  , dnsMagicDNSSuffix :: !Text
   }
   deriving (Eq, Show, Generic)
 
@@ -285,14 +291,15 @@ instance FromJSON DNSConfig where
       <*> o .:? "magicDNSSuffix" .!= ""
 
 instance ToJSON DNSConfig where
-  toJSON DNSConfig{..} = object
-    [ "resolvers"         .= dnsResolvers
-    , "fallbackResolvers" .= dnsFallbackResolvers
-    , "domains"           .= dnsDomains
-    , "routes"            .= dnsRoutes
-    , "magicDNS"          .= dnsMagicDNS
-    , "magicDNSSuffix"    .= dnsMagicDNSSuffix
-    ]
+  toJSON DNSConfig{..} =
+    object
+      [ "resolvers" .= dnsResolvers
+      , "fallbackResolvers" .= dnsFallbackResolvers
+      , "domains" .= dnsDomains
+      , "routes" .= dnsRoutes
+      , "magicDNS" .= dnsMagicDNS
+      , "magicDNSSuffix" .= dnsMagicDNSSuffix
+      ]
 
 -- | DNS nameservers
 newtype DNSNameServers = DNSNameServers
@@ -305,13 +312,14 @@ instance FromJSON DNSNameServers where
     DNSNameServers <$> o .: "dns"
 
 instance ToJSON DNSNameServers where
-  toJSON DNSNameServers{..} = object
-    [ "dns" .= dnsNameServers
-    ]
+  toJSON DNSNameServers{..} =
+    object
+      [ "dns" .= dnsNameServers
+      ]
 
 -- | Response from setting DNS nameservers
 data DNSNameServersPostResponse = DNSNameServersPostResponse
-  { dnsnsrDns      :: ![Text]
+  { dnsnsrDns :: ![Text]
   , dnsnsrMagicDNS :: !Bool
   }
   deriving (Eq, Show, Generic)
@@ -323,10 +331,11 @@ instance FromJSON DNSNameServersPostResponse where
       <*> o .: "magicDNS"
 
 instance ToJSON DNSNameServersPostResponse where
-  toJSON DNSNameServersPostResponse{..} = object
-    [ "dns"      .= dnsnsrDns
-    , "magicDNS" .= dnsnsrMagicDNS
-    ]
+  toJSON DNSNameServersPostResponse{..} =
+    object
+      [ "dns" .= dnsnsrDns
+      , "magicDNS" .= dnsnsrMagicDNS
+      ]
 
 -- | DNS search paths
 newtype DNSSearchPaths = DNSSearchPaths
@@ -339,9 +348,10 @@ instance FromJSON DNSSearchPaths where
     DNSSearchPaths <$> o .: "searchPaths"
 
 instance ToJSON DNSSearchPaths where
-  toJSON DNSSearchPaths{..} = object
-    [ "searchPaths" .= dnsSearchPaths
-    ]
+  toJSON DNSSearchPaths{..} =
+    object
+      [ "searchPaths" .= dnsSearchPaths
+      ]
 
 -- | DNS preferences (MagicDNS setting)
 newtype DNSPreferences = DNSPreferences
@@ -354,9 +364,10 @@ instance FromJSON DNSPreferences where
     DNSPreferences <$> o .: "magicDNS"
 
 instance ToJSON DNSPreferences where
-  toJSON DNSPreferences{..} = object
-    [ "magicDNS" .= dpMagicDNS
-    ]
+  toJSON DNSPreferences{..} =
+    object
+      [ "magicDNS" .= dpMagicDNS
+      ]
 
 --------------------------------------------------------------------------------
 -- Key Types
@@ -364,31 +375,32 @@ instance ToJSON DNSPreferences where
 
 -- | An authentication key for the Tailscale API
 data Key = Key
-  { keyId           :: !Text
-  , keyCreated      :: !UTCTime
-  , keyExpires      :: !UTCTime
+  { keyId :: !Text
+  , keyCreated :: !UTCTime
+  , keyExpires :: !UTCTime
   , keyCapabilities :: !KeyCapabilities
-  , keyDescription  :: !(Maybe Text)
+  , keyDescription :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON Key where
   parseJSON = withObject "Key" $ \o ->
     Key
-      <$> o .:  "id"
-      <*> o .:  "created"
-      <*> o .:  "expires"
-      <*> o .:  "capabilities"
+      <$> o .: "id"
+      <*> o .: "created"
+      <*> o .: "expires"
+      <*> o .: "capabilities"
       <*> o .:? "description"
 
 instance ToJSON Key where
-  toJSON Key{..} = object
-    [ "id"           .= keyId
-    , "created"      .= keyCreated
-    , "expires"      .= keyExpires
-    , "capabilities" .= keyCapabilities
-    , "description"  .= keyDescription
-    ]
+  toJSON Key{..} =
+    object
+      [ "id" .= keyId
+      , "created" .= keyCreated
+      , "expires" .= keyExpires
+      , "capabilities" .= keyCapabilities
+      , "description" .= keyDescription
+      ]
 
 -- | Key capabilities
 newtype KeyCapabilities = KeyCapabilities
@@ -401,9 +413,10 @@ instance FromJSON KeyCapabilities where
     KeyCapabilities <$> o .:? "devices"
 
 instance ToJSON KeyCapabilities where
-  toJSON KeyCapabilities{..} = object
-    [ "devices" .= kcDevices
-    ]
+  toJSON KeyCapabilities{..} =
+    object
+      [ "devices" .= kcDevices
+      ]
 
 -- | Device-related key capabilities
 newtype KeyDeviceCapabilities = KeyDeviceCapabilities
@@ -416,16 +429,17 @@ instance FromJSON KeyDeviceCapabilities where
     KeyDeviceCapabilities <$> o .: "create"
 
 instance ToJSON KeyDeviceCapabilities where
-  toJSON KeyDeviceCapabilities{..} = object
-    [ "create" .= kdcCreate
-    ]
+  toJSON KeyDeviceCapabilities{..} =
+    object
+      [ "create" .= kdcCreate
+      ]
 
 -- | Capabilities for creating devices with a key
 data KeyDeviceCreateCapabilities = KeyDeviceCreateCapabilities
-  { kdccReusable      :: !Bool
-  , kdccEphemeral     :: !Bool
+  { kdccReusable :: !Bool
+  , kdccEphemeral :: !Bool
   , kdccPreauthorized :: !Bool
-  , kdccTags          :: !(Maybe [Text])
+  , kdccTags :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
 
@@ -438,12 +452,13 @@ instance FromJSON KeyDeviceCreateCapabilities where
       <*> o .:? "tags"
 
 instance ToJSON KeyDeviceCreateCapabilities where
-  toJSON KeyDeviceCreateCapabilities{..} = object
-    [ "reusable"      .= kdccReusable
-    , "ephemeral"     .= kdccEphemeral
-    , "preauthorized" .= kdccPreauthorized
-    , "tags"          .= kdccTags
-    ]
+  toJSON KeyDeviceCreateCapabilities{..} =
+    object
+      [ "reusable" .= kdccReusable
+      , "ephemeral" .= kdccEphemeral
+      , "preauthorized" .= kdccPreauthorized
+      , "tags" .= kdccTags
+      ]
 
 --------------------------------------------------------------------------------
 -- ACL Types
@@ -452,11 +467,11 @@ instance ToJSON KeyDeviceCreateCapabilities where
 -- | A single ACL rule
 data ACLRow = ACLRow
   { aclAction :: !(Maybe Text)
-  , aclProto  :: !(Maybe Text)
-  , aclUsers  :: !(Maybe [Text])
-  , aclPorts  :: !(Maybe [Text])
-  , aclSrc    :: !(Maybe [Text])
-  , aclDst    :: !(Maybe [Text])
+  , aclProto :: !(Maybe Text)
+  , aclUsers :: !(Maybe [Text])
+  , aclPorts :: !(Maybe [Text])
+  , aclSrc :: !(Maybe [Text])
+  , aclDst :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
 
@@ -471,23 +486,24 @@ instance FromJSON ACLRow where
       <*> o .:? "dst"
 
 instance ToJSON ACLRow where
-  toJSON ACLRow{..} = object
-    [ "action" .= aclAction
-    , "proto"  .= aclProto
-    , "users"  .= aclUsers
-    , "ports"  .= aclPorts
-    , "src"    .= aclSrc
-    , "dst"    .= aclDst
-    ]
+  toJSON ACLRow{..} =
+    object
+      [ "action" .= aclAction
+      , "proto" .= aclProto
+      , "users" .= aclUsers
+      , "ports" .= aclPorts
+      , "src" .= aclSrc
+      , "dst" .= aclDst
+      ]
 
 -- | An ACL test case
 data ACLTest = ACLTest
-  { atSrc    :: !(Maybe Text)
-  , atUser   :: !(Maybe Text)
-  , atProto  :: !(Maybe Text)
+  { atSrc :: !(Maybe Text)
+  , atUser :: !(Maybe Text)
+  , atProto :: !(Maybe Text)
   , atAccept :: !(Maybe [Text])
-  , atDeny   :: !(Maybe [Text])
-  , atAllow  :: !(Maybe [Text])
+  , atDeny :: !(Maybe [Text])
+  , atAllow :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
 
@@ -502,19 +518,20 @@ instance FromJSON ACLTest where
       <*> o .:? "allow"
 
 instance ToJSON ACLTest where
-  toJSON ACLTest{..} = object
-    [ "src"    .= atSrc
-    , "user"   .= atUser
-    , "proto"  .= atProto
-    , "accept" .= atAccept
-    , "deny"   .= atDeny
-    , "allow"  .= atAllow
-    ]
+  toJSON ACLTest{..} =
+    object
+      [ "src" .= atSrc
+      , "user" .= atUser
+      , "proto" .= atProto
+      , "accept" .= atAccept
+      , "deny" .= atDeny
+      , "allow" .= atAllow
+      ]
 
 -- | Node attribute grant
 data NodeAttrGrant = NodeAttrGrant
   { nagTarget :: !(Maybe [Text])
-  , nagAttr   :: !(Maybe [Text])
+  , nagAttr :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
 
@@ -525,18 +542,19 @@ instance FromJSON NodeAttrGrant where
       <*> o .:? "attr"
 
 instance ToJSON NodeAttrGrant where
-  toJSON NodeAttrGrant{..} = object
-    [ "target" .= nagTarget
-    , "attr"   .= nagAttr
-    ]
+  toJSON NodeAttrGrant{..} =
+    object
+      [ "target" .= nagTarget
+      , "attr" .= nagAttr
+      ]
 
 -- | Full ACL details
 data ACLDetails = ACLDetails
-  { aclTests     :: !(Maybe [ACLTest])
-  , aclAcls      :: !(Maybe [ACLRow])
-  , aclGroups    :: !(Maybe (Map Text [Text]))
+  { aclTests :: !(Maybe [ACLTest])
+  , aclAcls :: !(Maybe [ACLRow])
+  , aclGroups :: !(Maybe (Map Text [Text]))
   , aclTagOwners :: !(Maybe (Map Text [Text]))
-  , aclHosts     :: !(Maybe (Map Text Text))
+  , aclHosts :: !(Maybe (Map Text Text))
   , aclNodeAttrs :: !(Maybe [NodeAttrGrant])
   }
   deriving (Eq, Show, Generic)
@@ -552,14 +570,15 @@ instance FromJSON ACLDetails where
       <*> o .:? "nodeAttrs"
 
 instance ToJSON ACLDetails where
-  toJSON ACLDetails{..} = object
-    [ "tests"     .= aclTests
-    , "acls"      .= aclAcls
-    , "groups"    .= aclGroups
-    , "tagowners" .= aclTagOwners
-    , "hosts"     .= aclHosts
-    , "nodeAttrs" .= aclNodeAttrs
-    ]
+  toJSON ACLDetails{..} =
+    object
+      [ "tests" .= aclTests
+      , "acls" .= aclAcls
+      , "groups" .= aclGroups
+      , "tagowners" .= aclTagOwners
+      , "hosts" .= aclHosts
+      , "nodeAttrs" .= aclNodeAttrs
+      ]
 
 -- | JSON-parsed ACL with version metadata
 data ACL = ACL
@@ -571,23 +590,23 @@ data ACL = ACL
 instance FromJSON ACL where
   parseJSON v = do
     aclData <- parseJSON v
-    pure ACL { aclData = aclData, aclETag = Nothing }
+    pure ACL{aclData = aclData, aclETag = Nothing}
 
 instance ToJSON ACL where
   toJSON ACL{..} = toJSON aclData
 
 -- | Human-friendly JSON format ACL (HuJSON)
 data ACLHuJSON = ACLHuJSON
-  { aclhRaw      :: !Text
+  { aclhRaw :: !Text
   , aclhWarnings :: !(Maybe [Text])
-  , aclhETag     :: !(Maybe Text)
+  , aclhETag :: !(Maybe Text)
   }
   deriving (Eq, Show, Generic)
 
 -- | Summary of ACL test failures
 data ACLTestFailureSummary = ACLTestFailureSummary
-  { atfsUser     :: !(Maybe Text)
-  , atfsErrors   :: !(Maybe [Text])
+  { atfsUser :: !(Maybe Text)
+  , atfsErrors :: !(Maybe [Text])
   , atfsWarnings :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
@@ -600,16 +619,17 @@ instance FromJSON ACLTestFailureSummary where
       <*> o .:? "warnings"
 
 instance ToJSON ACLTestFailureSummary where
-  toJSON ACLTestFailureSummary{..} = object
-    [ "user"     .= atfsUser
-    , "errors"   .= atfsErrors
-    , "warnings" .= atfsWarnings
-    ]
+  toJSON ACLTestFailureSummary{..} =
+    object
+      [ "user" .= atfsUser
+      , "errors" .= atfsErrors
+      , "warnings" .= atfsWarnings
+      ]
 
 -- | ACL test error response
 data ACLTestError = ACLTestError
   { ateResponse :: !ErrResponse
-  , ateData     :: ![ACLTestFailureSummary]
+  , ateData :: ![ACLTestFailureSummary]
   }
   deriving (Eq, Show, Generic)
 
@@ -621,37 +641,38 @@ instance FromJSON ACLTestError where
 
 -- | Result of matching a user against ACL rules
 data UserRuleMatch = UserRuleMatch
-  { urmUsers      :: ![Text]
-  , urmPorts      :: ![Text]
+  { urmUsers :: ![Text]
+  , urmPorts :: ![Text]
   , urmLineNumber :: !Int
-  , urmVia        :: !(Maybe [Text])
-  , urmPostures   :: !(Maybe [Text])
+  , urmVia :: !(Maybe [Text])
+  , urmPostures :: !(Maybe [Text])
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON UserRuleMatch where
   parseJSON = withObject "UserRuleMatch" $ \o ->
     UserRuleMatch
-      <$> o .:  "users"
-      <*> o .:  "ports"
-      <*> o .:  "lineNumber"
+      <$> o .: "users"
+      <*> o .: "ports"
+      <*> o .: "lineNumber"
       <*> o .:? "via"
       <*> o .:? "postures"
 
 instance ToJSON UserRuleMatch where
-  toJSON UserRuleMatch{..} = object
-    [ "users"      .= urmUsers
-    , "ports"      .= urmPorts
-    , "lineNumber" .= urmLineNumber
-    , "via"        .= urmVia
-    , "postures"   .= urmPostures
-    ]
+  toJSON UserRuleMatch{..} =
+    object
+      [ "users" .= urmUsers
+      , "ports" .= urmPorts
+      , "lineNumber" .= urmLineNumber
+      , "via" .= urmVia
+      , "postures" .= urmPostures
+      ]
 
 -- | ACL preview result
 data ACLPreview = ACLPreview
-  { apMatches  :: ![UserRuleMatch]
-  , apUser     :: !(Maybe Text)
-  , apIPPort   :: !(Maybe Text)
+  { apMatches :: ![UserRuleMatch]
+  , apUser :: !(Maybe Text)
+  , apIPPort :: !(Maybe Text)
   , apPostures :: !(Maybe (Map Text [Text]))
   }
   deriving (Eq, Show, Generic)
@@ -659,18 +680,19 @@ data ACLPreview = ACLPreview
 instance FromJSON ACLPreview where
   parseJSON = withObject "ACLPreview" $ \o ->
     ACLPreview
-      <$> o .:  "matches"
+      <$> o .: "matches"
       <*> o .:? "user"
       <*> o .:? "ipport"
       <*> o .:? "postures"
 
 instance ToJSON ACLPreview where
-  toJSON ACLPreview{..} = object
-    [ "matches"  .= apMatches
-    , "user"     .= apUser
-    , "ipport"   .= apIPPort
-    , "postures" .= apPostures
-    ]
+  toJSON ACLPreview{..} =
+    object
+      [ "matches" .= apMatches
+      , "user" .= apUser
+      , "ipport" .= apIPPort
+      , "postures" .= apPostures
+      ]
 
 --------------------------------------------------------------------------------
 -- Routes Types
@@ -679,7 +701,7 @@ instance ToJSON ACLPreview where
 -- | Routes configuration for a device
 data Routes = Routes
   { routesAdvertised :: ![Text]
-  , routesEnabled    :: ![Text]
+  , routesEnabled :: ![Text]
   }
   deriving (Eq, Show, Generic)
 
@@ -690,7 +712,8 @@ instance FromJSON Routes where
       <*> o .:? "enabledRoutes" .!= []
 
 instance ToJSON Routes where
-  toJSON Routes{..} = object
-    [ "advertisedRoutes" .= routesAdvertised
-    , "enabledRoutes"    .= routesEnabled
-    ]
+  toJSON Routes{..} =
+    object
+      [ "advertisedRoutes" .= routesAdvertised
+      , "enabledRoutes" .= routesEnabled
+      ]
